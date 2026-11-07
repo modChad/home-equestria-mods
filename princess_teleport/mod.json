@@ -1,0 +1,9 @@
+{
+	"id": "princess_teleport",
+	"name": "Princess Teleport",
+	"version": "1.0.0",
+	"author": "modChad",
+	"description": "Princess Celestia, Princess Luna and Twilight Sparkle can teleport. Ask one to take you somewhere far while you stand beside her and she takes you both there in a flash of magic instead of walking.",
+	"game_version": "0.3.0-maredev",
+	"entry": "res://mods/princess_teleport/main.gd"
+}

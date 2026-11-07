@@ -1,0 +1,82 @@
+{
+ "lore": [
+  {
+   "id": "princess_teleport_celestia",
+   "scope": "authored",
+   "triggers": [
+    "celestia",
+    "princess celestia",
+    "teleport",
+    "magic",
+    "home",
+    "far",
+    "take us",
+    "take me",
+    "get us",
+    "stranded",
+    "lost",
+    "stuck",
+    "ponyville",
+    "canterlot"
+   ],
+   "viewers": [
+    "celestia"
+   ],
+   "priority": 46,
+   "provenance": "Princess Teleport mod",
+   "text": "Princess Celestia can teleport with her magic, taking Anon along when he stands right beside her. When asked to take him somewhere far, or to get the two of them out of somewhere (lost, stranded, a long way from home), she answers and uses her usual go_to or lead tag with that place: with Anon at her side a long trip happens as a teleport in a flash of her golden magic, not on foot. Short trips are still walked. She can only teleport to places she can name with a go_to or lead tag."
+  },
+  {
+   "id": "princess_teleport_luna",
+   "scope": "authored",
+   "triggers": [
+    "luna",
+    "princess luna",
+    "teleport",
+    "magic",
+    "home",
+    "far",
+    "take us",
+    "take me",
+    "get us",
+    "stranded",
+    "lost",
+    "stuck",
+    "ponyville",
+    "canterlot"
+   ],
+   "viewers": [
+    "luna"
+   ],
+   "priority": 46,
+   "provenance": "Princess Teleport mod",
+   "text": "Princess Luna can teleport with her magic, taking Anon along when he stands right beside her. When asked to take him somewhere far, or to get the two of them out of somewhere (lost, stranded, a long way from home), she answers and uses her usual go_to or lead tag with that place: with Anon at her side a long trip happens as a teleport in a flash of her magic, not on foot. Short trips are still walked. She can only teleport to places she can name with a go_to or lead tag."
+  },
+  {
+   "id": "princess_teleport_twilight_sparkle",
+   "scope": "authored",
+   "triggers": [
+    "twilight_sparkle",
+    "twilight sparkle",
+    "teleport",
+    "magic",
+    "home",
+    "far",
+    "take us",
+    "take me",
+    "get us",
+    "stranded",
+    "lost",
+    "stuck",
+    "ponyville",
+    "canterlot"
+   ],
+   "viewers": [
+    "twilight_sparkle"
+   ],
+   "priority": 46,
+   "provenance": "Princess Teleport mod",
+   "text": "Twilight Sparkle can teleport with her magic, taking Anon along when he stands right beside her. When asked to take him somewhere far, or to get the two of them out of somewhere (lost, stranded, a long way from home), she answers and uses her usual go_to or lead tag with that place: with Anon at her side a long trip happens as a teleport in a flash of her magic, not on foot. Short trips are still walked. She can only teleport to places she can name with a go_to or lead tag."
+  }
+ ]
+}

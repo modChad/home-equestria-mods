@@ -1,0 +1,9 @@
+{
+	"id": "grooming",
+	"name": "Grooming",
+	"version": "1.0.2",
+	"author": "modChad",
+	"description": "A mane & tail brush, a coat brush and wing preening. Each has its own animation; a finished grooming raises friendship, and love with an adult pony who is already fond of you.",
+	"game_version": "0.3.0-maredev",
+	"entry": "res://mods/grooming/main.gd"
+}

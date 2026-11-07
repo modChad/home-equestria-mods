@@ -1,0 +1,28 @@
+{
+	"groom-mane-brush": {
+		"name": "Mane & Tail Brush",
+		"category": "grooming",
+		"stack": 1,
+		"consume": false,
+		"drink": false,
+		"container": "",
+		"description": "A paddle brush (Grooming mod). Stroke a pony's mane or tail with it; on desktop look at her mane or tail and hold the mouse button.",
+		"mass": 0.12,
+		"size_m": [0.068, 0.05, 0.253],
+		"price_bits": 0,
+		"model": "../../../mods/grooming/models/mane_brush"
+	},
+	"groom-coat-brush": {
+		"name": "Coat Brush",
+		"category": "grooming",
+		"stack": 1,
+		"consume": false,
+		"drink": false,
+		"container": "",
+		"description": "A soft body brush (Grooming mod). Stroke a pony's coat with it; on desktop look at her coat and hold the mouse button.",
+		"mass": 0.15,
+		"size_m": [0.072, 0.063, 0.152],
+		"price_bits": 0,
+		"model": "../../../mods/grooming/models/coat_brush"
+	}
+}

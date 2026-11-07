@@ -1,0 +1,9 @@
+{
+	"id": "balloon_boarding",
+	"name": "Balloon Boarding",
+	"version": "1.0.0",
+	"author": "modChad",
+	"description": "Ponies you carry into the hot-air balloon stay aboard as passengers, and a pony following you who stops short of the ramp still climbs in.",
+	"game_version": "0.3.0-maredev",
+	"entry": "res://mods/balloon_boarding/main.gd"
+}

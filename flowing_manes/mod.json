@@ -1,0 +1,9 @@
+{
+	"id": "flowing_manes",
+	"name": "Flowing Manes",
+	"version": "1.0.0",
+	"author": "modChad",
+	"description": "Princess Celestia's and Princess Luna's manes and tails flow and ripple like in the show, with twinkling sparkles and drifting stars, and react to how they feel. Settings are under Settings > More > Flowing Manes.",
+	"game_version": "0.3.0-maredev",
+	"entry": "res://mods/flowing_manes/main.gd"
+}

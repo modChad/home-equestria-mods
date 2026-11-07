@@ -1,0 +1,9 @@
+{
+	"id": "pegasus_ride_v2",
+	"name": "Pegasus Ride",
+	"version": "2.2.1",
+	"author": "Anon (original), adapted by modChad",
+	"description": "Fly on the back of any winged friend across Equestria, Celestia and Luna included. N to mount/land, V to cruise, P to explore, or name destinations in conversation.",
+	"game_version": "0.3.0-maredev",
+	"entry": "res://mods/pegasus_ride_v2/main.gd"
+}
