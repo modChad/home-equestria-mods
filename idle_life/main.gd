@@ -283,6 +283,7 @@ func _advance(pony: Variant, delta: float) -> void:
 		var reader := sk.get_node_or_null(FRINGE.READER)
 		if reader != null: sk.move_child(reader, -1)
 	_face(pony, row, fade)
+	if not bool(row.get("recorded", false)) and not bool(row.leaving) and float(row.time) >= RECORD_AT * total: _record(pony, row)
 	if row.has("flight") and float(row.time) > 1.0 and not bool(row.flight.call("active")):
 		row.time = maxf(float(row.time), total - 0.6)
 	if float(row.time) >= total or fade <= 0.0:
@@ -1196,3 +1197,57 @@ func _shoe_path(pony: Node3D, row: Dictionary, hoof: Vector3, present: Vector3, 
 	var c1 := out + Vector3.UP * (present.y - out.y) * 0.75
 	var c2 := present + beside * 0.15 * size
 	return out.bezier_interpolate(c1, c2, present, k)
+
+
+# ---------------------------------------------------------------- remembering
+
+## The idles worth remembering: once one is RECORD_AT of the way through, it is written to the
+## game's witnessed-events memory (world_context.record, kind "idle_life") for the pony herself
+## and the ponies within WITNESS_RANGE metres, which the AI reads into their prompts. %s is her
+## name, %p her/his. At most one per pony every RECORD_GAP seconds.
+const RECORD := {
+	"scroll": "%s conjured a scroll with %p magic, read it through and made it vanish again.",
+	"write": "%s conjured a blank scroll and a quill with %p magic, wrote a short note, signed it and made it vanish.",
+	"tea": "%s conjured a cup of tea with %p magic, sipped it and made the cup vanish.",
+	"shoe": "%s took off one of %p shoes with %p magic, shook a pebble out of it and put it back on.",
+	"sun": "%s flew up a little way at %t, faced the sun and lit %p horn toward it, then landed.",
+	"moon": "%s flew up a little way as the moon sat low on the horizon, faced it and lit %p horn toward it, then landed.",
+	"doze": "%s dozed off on %p hooves for a moment, then woke with a little start.",
+}
+const RECORD_AT := 0.45
+const RECORD_GAP := 180.0
+const WITNESS_RANGE := 10.0
+## pony -> when her last idle was recorded (msec)
+var _recorded: Dictionary = {}
+
+
+func _record(pony: Node3D, row: Dictionary) -> void:
+	row.recorded = true
+	var line: String = RECORD.get(str(row.idle), "")
+	var game: Variant = Mods.game
+	if line.is_empty() or not is_instance_valid(game): return
+	var memory: Variant = game.get("world_context")
+	var director: Variant = game.get("director")
+	if memory == null or director == null or not memory.has_method("record"): return
+	var cast: Variant = director.get("characters")
+	if not cast is Dictionary: return
+	var id := ""
+	for key: Variant in cast:
+		if (cast[key] as Dictionary).get("node") == pony: id = str(key)
+	if id.is_empty(): return
+	var now := Time.get_ticks_msec()
+	if now - int(_recorded.get(pony, -1000000000)) < int(RECORD_GAP * 1000.0): return
+	var witnesses := [id]
+	for key: Variant in cast:
+		var other: Variant = (cast[key] as Dictionary).get("node")
+		if other == pony or not other is Node3D or not is_instance_valid(other): continue
+		if (other as Node3D).global_position.distance_to(pony.global_position) <= WITNESS_RANGE: witnesses.append(str(key))
+	var identity: Variant = pony.get("identity")
+	var name := str(identity.get("display_name")) if identity != null else id
+	var his := "his" if identity != null and bool(identity.get("stallion")) else "her"
+	var clock := get_node_or_null("/root/TimeOfDay")
+	var when := "sunrise" if clock != null and float(clock.get("hours")) < 12.0 else "sunset"
+	var text := line.replace("%s", name).replace("%p", his).replace("%t", when)
+	if str(memory.call("record", "idle_life", text, witnesses, [id])).is_empty(): return
+	_recorded[pony] = now
+	if LAB_DEBUG: print("RECORDED ", id, " ", witnesses, " ", text)

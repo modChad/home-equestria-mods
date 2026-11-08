@@ -1,6 +1,6 @@
 # Idle Life
 
-- **Version:** 1.2.0
+- **Version:** 1.3.0
 - **By:** modChad
 - **Made for:** Home: Equestria 0.3.0-maredev
 - **Works on:** desktop and VR (nothing to press)
@@ -50,10 +50,12 @@ Put `idle_life.pck` in the game's `mods` folder and switch it on in **Settings â
 - The sun and moon checks use the game's own flight to take off, hover and land. While she's up, only being spoken to or held cuts it short.
 - Tea finds her lips from her face rig: the princesses' body `MOUNT_MOUTH` is in the wrong place (a game bug).
 - Everything scales with the pony's size.
+- **Remembered:** the scroll, writing, tea, shoe check, sun, moon and dozing off are written to the game's memory of witnessed events about halfway through (one line, e.g. "Princess Celestia conjured a scroll with her magic, read it through and made it vanish again."), for the pony herself and AI ponies within 10 m. At most one per pony every 3 minutes. Ponies can then mention it in conversation.
 - Switching the mod off hands back anything it was holding (eyes, ears, mouth, wings, magic, gaze).
 
 ## Changes
 
+- **1.3.0 (2026-11-08):** nearby ponies (and the pony herself) remember the notable idles, so they can talk about them.
 - **1.2.0 (2026-11-08):** new idles for Celestia and Luna: writing a scroll, tea, the shoe check; tending the sun (Celestia) and checking the moon (Luna). The scroll's head sway is gentler.
 - **1.1.0 (2026-11-08):** new idle: reading a scroll (Celestia and Luna). The stretch's neck no longer lifts, so her head sits lower.
 - **1.0.0 (2026-11-06):** ten idles.
