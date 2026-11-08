@@ -1,0 +1,9 @@
+{
+	"id": "princess_wings",
+	"name": "Princess Wings",
+	"version": "1.0.0",
+	"author": "modChad",
+	"description": "Celestia's and Luna's open wings grow from their shoulder blades, just behind the withers, instead of floating above the middle of the back.",
+	"game_version": "0.3.0-maredev",
+	"entry": "res://mods/princess_wings/main.gd"
+}
