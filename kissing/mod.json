@@ -1,0 +1,9 @@
+{
+	"id": "kissing",
+	"name": "Kissing",
+	"version": "1.0.0",
+	"author": "modChad",
+	"description": "Hold K to kiss the pony in front of you, no carrying needed: she comes to you and reaches up to your lips. In VR, lean in close. Whether she kisses back, and how deeply, follows the game's own friendship and romance rules. Ponies nearby remember seeing it.",
+	"game_version": "0.3.0-maredev",
+	"entry": "res://mods/kissing/main.gd"
+}
