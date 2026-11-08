@@ -6,6 +6,7 @@
 #   ./build_packs.sh grooming teleport   just these
 # The game's build tool packs every file in a mod's folder, so any .pck still in it (older
 # packs) is set aside in mods/.build_aside/ while the new one builds and put back afterwards.
+# Afterwards update_readme.py brings .github/README.md's download table up to date.
 set -u
 MODS="$(cd "$(dirname "$0")" && pwd)"
 PROJECT="$(dirname "$MODS")"
@@ -38,4 +39,7 @@ for id in "${ids[@]}"; do
 	rmdir "$ASIDE/$id" 2>/dev/null
 done
 rmdir "$ASIDE" 2>/dev/null
+# The download table in .github/README.md, to match the packs now in release_packs/.
+if command -v python3 >/dev/null; then python3 "$MODS/update_readme.py" || failed=1
+else echo "python3 not found: update .github/README.md's Mods table by hand"; fi
 exit $failed
