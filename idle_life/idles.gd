@@ -16,6 +16,12 @@ const LENGTH := {
 	"wing_stretch": 7.0,
 	"magic_sparkle": 6.0,
 	"stargaze": 12.0,
+	"scroll": 9.5,
+	"tea": 9.4,
+	"write": 10.8,
+	"shoe": 8.4,
+	"sun": 12.0,
+	"moon": 12.0,
 }
 ## Only ponies with wings.
 const WINGED := ["preen", "wing_stretch"]
@@ -31,6 +37,62 @@ const HORNED := ["magic_brush"]
 ## BRUSH_FRINGE.x to .y (BRUSH_STROKE seconds each), brush away.
 const BRUSH_FRINGE := Vector2(1.2, 6.7)
 const BRUSH_STROKE := 1.1
+## Only the princesses (Celestia and Luna): they have a horn and a kingdom's letters to read.
+const PRINCESS_ONLY := ["scroll", "tea", "write", "shoe", "sun", "moon"]
+## The scroll's beats (seconds): it appears in a flash at SCROLL_SHOW.x and vanishes in one at
+## .y; unrolls over SCROLL_OPEN, rolls back up over SCROLL_CLOSE; she reads its rows (one per
+## SCROLL_LINE seconds) from SCROLL_READ, and nods once at SCROLL_NOD.
+const SCROLL_SHOW := Vector2(0.9, 8.1)
+const SCROLL_OPEN := Vector2(1.2, 2.3)
+const SCROLL_CLOSE := Vector2(6.9, 7.8)
+const SCROLL_READ := 2.5
+const SCROLL_LINE := 1.0
+const SCROLL_NOD := 6.55
+## Tea's beats (seconds): cup and saucer appear in a flash at TEA_SHOW.x and vanish at .y; the
+## cup lifts from the saucer to just before her muzzle over TEA_LIFT, comes to her lips for each
+## of TEA_SIPS, and goes back down to the saucer over TEA_DOWN.
+const TEA_SHOW := Vector2(0.8, 8.1)
+const TEA_LIFT := Vector2(1.2, 2.2)
+const TEA_SIPS := [Vector2(2.4, 3.8), Vector2(5.0, 6.2)]
+const TEA_DOWN := Vector2(6.6, 7.5)
+## Writing's beats (seconds): a blank scroll and a quill appear at WRITE_SHOW.x and vanish at .y;
+## the scroll unrolls over WRITE_OPEN, the quill writes one row in each of WRITE_LINES (the last
+## her signature), she nods at WRITE_NOD, and it rolls up over WRITE_CLOSE.
+const WRITE_SHOW := Vector2(0.9, 9.6)
+const WRITE_OPEN := Vector2(1.2, 2.2)
+const WRITE_LINES := [Vector2(2.7, 4.1), Vector2(4.4, 5.8), Vector2(6.1, 7.5), Vector2(7.8, 8.4)]
+const WRITE_NOD := 8.55
+const WRITE_CLOSE := Vector2(8.8, 9.5)
+## The shoe check's beats (seconds): a foreleg lifts over SHOE_LIFT; its shoe slides off in her
+## magic over SHOE_OFF, comes up before her face over SHOE_UP, turns upside down over SHOE_FLIP,
+## is shaken over SHOE_SHAKE (a pebble drops out at SHOE_PEBBLE), turns back over SHOE_UNFLIP,
+## goes back to her hoof over SHOE_BACK and is on again at SHOE_ON; the hoof comes down over
+## SHOE_DOWN.
+const SHOE_LIFT := Vector2(0.3, 1.0)
+const SHOE_OFF := Vector2(1.3, 1.7)
+const SHOE_UP := Vector2(1.7, 2.9)
+const SHOE_FLIP := Vector2(3.0, 3.4)
+const SHOE_SHAKE := Vector2(3.4, 4.6)
+const SHOE_PEBBLE := 3.85
+const SHOE_UNFLIP := Vector2(4.7, 5.1)
+const SHOE_BACK := Vector2(5.2, 6.5)
+const SHOE_ON := 6.6
+const SHOE_DOWN := Vector2(7.1, 7.8)
+## The sun check: only around sunrise and sunset (SUN_HOURS, main.gd), and only Celestia (it's
+## her sun). She takes off with the
+## game's own flight (a hover SUN_ALTITUDE metres up, at size 1, for SUN_HOVER seconds), turns to
+## face the sun, lights her horn over SUN_GLOW with a warm smile and squint, then lands. The idle
+## ends when she is down (LENGTH is only its longest).
+const SUN_ONLY := ["princess_celestia", "celestia"]
+## The moon check: the same, for Luna and her moon, around moonrise and moonset (the moon's height
+## within SUN_HOURS), and only when at least MOON_LIT of it is lit.
+const MOON_ONLY := ["princess_luna", "luna"]
+const MOON_LIT := 0.25
+const SUN_ALTITUDE := 1.5
+const SUN_HOVER := 5.0
+## Sun height (sine of its elevation) she may tend it between: about -2 to 15 degrees.
+const SUN_HOURS := Vector2(-0.035, 0.26)
+const SUN_GLOW := Vector2(1.6, 4.4)
 ## Not for Celestia and Luna for now (main.gd): see MOD_IDEAS.md.
 const NOT_PRINCESSES := ["preen", "wing_stretch"]
 ## The magic sparkle: the sparks drift up from her horn over these seconds (main.gd).
@@ -78,6 +140,10 @@ static func turns(idle: String, t: float, side: float) -> Array:
 		"wing_stretch": return _wing_stretch(t, side)
 		"magic_sparkle": return _magic_sparkle(t, side)
 		"stargaze": return _stargaze(t, side)
+		"scroll": return _scroll(t, side)
+		"tea": return _tea(t, side)
+		"write": return _write(t, side)
+		"shoe": return _shoe(t, side)
 	return []
 
 
@@ -285,4 +351,67 @@ static func _doze(t: float, side: float, leg: String) -> Array:
 		["pony_legLower" + leg, "pitch", 26.0 * rest],
 		["pony_tarsal" + leg, "pitch", -14.0 * rest],
 		["pony_hoof" + leg, "pitch", -30.0 * rest],
+	]
+
+
+## Reading a scroll held in her magic: head a little down toward it, a small nod at the end of
+## what she reads. Her eyes and the head's turn follow the writing (main.gd: her attention).
+static func _scroll(t: float, side: float) -> Array:
+	var e := envelope(t, LENGTH.scroll, 1.0, 1.3)
+	var nod := smoothstep(SCROLL_NOD, SCROLL_NOD + 0.25, t) * (1.0 - smoothstep(SCROLL_NOD + 0.25, SCROLL_NOD + 0.6, t))
+	return [
+		["pony_neck1", "pitch", -5.0 * e],
+		["pony_neck2", "pitch", -3.0 * e],
+		["pony_head", "pitch", (-6.0 - 8.0 * nod) * e],
+	]
+
+
+## How far into a sip she is (0 cup held before her .. 1 at her lips, tipped).
+static func tea_sip(t: float) -> float:
+	var k := 0.0
+	for sip: Vector2 in TEA_SIPS:
+		k = maxf(k, smoothstep(sip.x, sip.x + 0.5, t) * (1.0 - smoothstep(sip.y - 0.45, sip.y, t)))
+	return k
+
+
+## Tea: head a little down toward the cup, then up a touch for each sip as it tips.
+static func _tea(t: float, side: float) -> Array:
+	var e := envelope(t, LENGTH.tea, 1.0, 1.2)
+	var sip := tea_sip(t)
+	return [
+		["pony_neck1", "pitch", -4.0 * e],
+		["pony_head", "pitch", (-5.0 + 9.0 * sip) * e],
+	]
+
+
+## How far the quill has written along each row (x, y, z, w: rows 0..3), 0..1.
+static func write_progress(t: float) -> Vector4:
+	var done := Vector4()
+	for i in WRITE_LINES.size():
+		var row: Vector2 = WRITE_LINES[i]
+		done[i] = clampf((t - row.x) / (row.y - row.x), 0.0, 1.0)
+	return done
+
+
+## Writing: head a little down toward the scroll, a small nod at the end (her signature).
+static func _write(t: float, side: float) -> Array:
+	var e := envelope(t, LENGTH.write, 1.0, 1.3)
+	var nod := smoothstep(WRITE_NOD, WRITE_NOD + 0.25, t) * (1.0 - smoothstep(WRITE_NOD + 0.25, WRITE_NOD + 0.6, t))
+	return [
+		["pony_neck1", "pitch", -6.0 * e],
+		["pony_neck2", "pitch", -3.0 * e],
+		["pony_head", "pitch", (-7.0 - 8.0 * nod) * e],
+	]
+
+
+## The shoe check: one foreleg folded up and back so the sole of her hoof faces behind her (as a
+## farrier holds it), held while the shoe is off.
+static func _shoe(t: float, side: float) -> Array:
+	var leg := "_R" if side > 0.0 else "_L"
+	var up := smoothstep(SHOE_LIFT.x, SHOE_LIFT.y, t) * (1.0 - smoothstep(SHOE_DOWN.x, SHOE_DOWN.y, t))
+	return [
+		["pony_upperArm" + leg, "pitch", 8.0 * up],
+		["pony_lowerArm" + leg, "pitch", -85.0 * up],
+		["pony_wrist" + leg, "pitch", -45.0 * up],
+		["pony_hand" + leg, "pitch", -15.0 * up],
 	]

@@ -1,0 +1,96 @@
+extends RefCounted
+## The tea idle's cup and saucer, made here (no model files): white porcelain with gold rims, tea
+## in the cup. The cup's origin is the middle of its base; its handle is on its +X side.
+
+## Sizes at an ordinary mare's size (metres).
+const CUP_HEIGHT := 0.05
+const CUP_TOP := 0.034
+const CUP_FOOT := 0.024
+const SAUCER := 0.066
+const PORCELAIN := Color(0.97, 0.96, 0.93)
+const GOLD := Color(0.86, 0.67, 0.26)
+const TEA := Color(0.5, 0.27, 0.1)
+
+
+static func make_cup() -> Node3D:
+	var cup := Node3D.new()
+	cup.name = "IdleLifeTeacup"
+	var body := _mesh(_cylinder(CUP_TOP, CUP_FOOT, CUP_HEIGHT), _porcelain())
+	body.position.y = CUP_HEIGHT / 2.0
+	cup.add_child(body)
+	var rim := _mesh(_torus(CUP_TOP - 0.002, CUP_TOP + 0.0025), _gold())
+	rim.position.y = CUP_HEIGHT
+	cup.add_child(rim)
+	var foot := _mesh(_torus(CUP_FOOT - 0.002, CUP_FOOT + 0.002), _gold())
+	foot.position.y = 0.002
+	cup.add_child(foot)
+	var tea := _mesh(_cylinder(CUP_TOP - 0.003, CUP_TOP - 0.004, 0.002), _flat(TEA, 0.15))
+	tea.position.y = CUP_HEIGHT - 0.008
+	cup.add_child(tea)
+	var handle := _mesh(_torus(0.009, 0.0145), _porcelain())
+	handle.rotation.x = PI / 2.0
+	handle.position = Vector3(CUP_TOP - 0.001, CUP_HEIGHT * 0.55, 0.0)
+	cup.add_child(handle)
+	return cup
+
+
+static func make_saucer() -> Node3D:
+	var saucer := Node3D.new()
+	saucer.name = "IdleLifeSaucer"
+	var plate := _mesh(_cylinder(SAUCER, SAUCER * 0.62, 0.008), _porcelain())
+	plate.position.y = 0.004
+	saucer.add_child(plate)
+	var rim := _mesh(_torus(SAUCER - 0.003, SAUCER + 0.002), _gold())
+	rim.position.y = 0.008
+	saucer.add_child(rim)
+	return saucer
+
+
+## The point of the cup's rim nearest `toward` (a direction in the cup's own space, sideways).
+static func rim_point(toward: Vector3) -> Vector3:
+	var flat := Vector3(toward.x, 0.0, toward.z)
+	flat = flat.normalized() if not flat.is_zero_approx() else Vector3.FORWARD
+	return Vector3(0.0, CUP_HEIGHT, 0.0) + flat * CUP_TOP
+
+
+static func _cylinder(top: float, bottom: float, height: float) -> CylinderMesh:
+	var c := CylinderMesh.new()
+	c.top_radius = top
+	c.bottom_radius = bottom
+	c.height = height
+	c.radial_segments = 28
+	c.rings = 1
+	return c
+
+
+static func _torus(inner: float, outer: float) -> TorusMesh:
+	var t := TorusMesh.new()
+	t.inner_radius = inner
+	t.outer_radius = outer
+	t.rings = 28
+	t.ring_segments = 8
+	return t
+
+
+static func _mesh(mesh: Mesh, material: Material) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.material_override = material
+	return mi
+
+
+static func _porcelain() -> StandardMaterial3D:
+	return _flat(PORCELAIN, 0.22)
+
+
+static func _gold() -> StandardMaterial3D:
+	var m := _flat(GOLD, 0.3)
+	m.metallic = 0.7
+	return m
+
+
+static func _flat(colour: Color, roughness: float) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = colour
+	m.roughness = roughness
+	return m

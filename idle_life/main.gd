@@ -21,6 +21,9 @@ const BRUSH := preload("res://mods/idle_life/models/brush.scn")
 const UNICORN_MAGIC := preload("res://world/characters/magic/unicorn_magic.gd")
 const FRINGE := preload("res://mods/idle_life/fringe.gd")
 const POSE_READER := preload("res://mods/idle_life/pose_reader.gd")
+const SCROLL := preload("res://mods/idle_life/scroll.gd")
+const TEA := preload("res://mods/idle_life/tea.gd")
+const SHOE := preload("res://mods/idle_life/shoe.gd")
 ## How long before looking again for a fringe not found (milliseconds).
 const FRINGE_RETRY_MS := 30000
 ## Ponies who never brush their manes (canonically not the sort), or have no fringe to brush.
@@ -143,6 +146,9 @@ func _choose(pony: Node3D) -> String:
 		if idle in IDLES.MAGIC and not _horned(pony): continue
 		# Shelved for the princesses: their open wings don't fit their bodies yet (a known game bug).
 		if idle in IDLES.NOT_PRINCESSES and _princess(pony): continue
+		if idle in IDLES.PRINCESS_ONLY and not (_princess(pony) and _horned(pony)): continue
+		if idle == "sun" and (not _sun_pony(pony) or not _sun_hours()): continue
+		if idle == "moon" and (not _moon_pony(pony) or not _moon_hours()): continue
 		if idle == str(_last.get(pony, "")) or str(IDLES.VARIANTS.get(idle, "")) == str(_last.get(pony, "")): continue
 		options.append(idle)
 	var chosen: String = options[_rng.randi_range(0, options.size() - 1)]
@@ -195,6 +201,52 @@ func play(pony: Node3D, idle: String, side := 0.0, forced := false) -> bool:
 	if idle in IDLES.MAGIC:
 		if not _horned(pony): return false
 		row.sparks = []
+	if idle in IDLES.PRINCESS_ONLY:
+		if not (_princess(pony) and _horned(pony)): return false
+		var holder: Node = pony.get_parent() if pony.get_parent() != null else pony
+		if idle in ["sun", "moon"]:
+			var hers := _sun_pony(pony) if idle == "sun" else _moon_pony(pony)
+			if not hers or not _winged(pony) or not pony.has_method("_ensure_flight"): return false
+			pony.call("_ensure_flight")
+			var flight: Variant = pony.get("flight")
+			if flight == null: return false
+			if not bool(flight.call("request", pony.global_position, IDLES.SUN_HOVER, false, IDLES.SUN_ALTITUDE)):
+				if LAB_DEBUG: print("SUN no flight: ", flight.get("reason"))
+				return false
+			row.flight = flight
+		elif idle == "shoe":
+			var near := SHOE.body(pony)
+			var bsk: Skeleton3D = near.get_node_or_null(near.skeleton) as Skeleton3D if near != null else null
+			# Always her left foreleg: on the right the floating shoe goes through her mane.
+			row.side = -1.0
+			row.leg = "_L"
+			var without: ArrayMesh = SHOE.mesh_without(near, bsk, row.leg) if bsk != null else null
+			if without == null: return false
+			row.near = near
+			row.body_sk = bsk
+			row.near_mesh = near.mesh
+			row.without = without
+		elif idle in ["scroll", "write"]:
+			var scroll := SCROLL.make(idle == "write")
+			holder.add_child(scroll)
+			scroll.visible = false
+			row.scroll = scroll
+			if idle == "write":
+				row.quill = SCROLL.make_quill()
+				holder.add_child(row.quill)
+				(row.quill as Node3D).visible = false
+		else:
+			row.cup = TEA.make_cup()
+			row.saucer = TEA.make_saucer()
+			for thing: Node3D in [row.cup, row.saucer]:
+				holder.add_child(thing)
+				thing.visible = false
+		# What her eyes follow (the writing, the cup), and what she was watching before.
+		var eye := Node3D.new()
+		eye.name = "IdleLifeScrollEye"
+		holder.add_child(eye)
+		row.gaze_eye = eye
+		row.gaze_was = pony.get("action_gaze_target")
 	var pose: SkeletonModifier3D = POSE.new()
 	pose.name = "IdleLife"
 	pose.mare = pony
@@ -218,7 +270,7 @@ func _advance(pony: Variant, delta: float) -> void:
 	row.check = float(row.check) - delta
 	if row.check <= 0.0 and not bool(row.leaving) and not bool(row.forced):
 		row.check = CHECK
-		if not _free(pony, row.has("stage")): row.leaving = true
+		if not _still_free(pony, row): row.leaving = true
 	if bool(row.leaving): row.fade = maxf(float(row.fade) - delta / FADE_OUT, 0.0)
 	var fade := float(row.fade)
 	row.pose.time = row.time
@@ -231,9 +283,26 @@ func _advance(pony: Variant, delta: float) -> void:
 		var reader := sk.get_node_or_null(FRINGE.READER)
 		if reader != null: sk.move_child(reader, -1)
 	_face(pony, row, fade)
+	if row.has("flight") and float(row.time) > 1.0 and not bool(row.flight.call("active")):
+		row.time = maxf(float(row.time), total - 0.6)
 	if float(row.time) >= total or fade <= 0.0:
 		if row.has("stage") and str(row.stage) == "preening": _rise(pony, row)
 		else: _finish(pony)
+
+
+## Still free (_free), not counting the scroll's own gaze: an action gaze makes the game's
+## fidget test say she is busy.
+func _still_free(pony: Node3D, row: Dictionary) -> bool:
+	if row.has("flight") and row.flight != null and bool(row.flight.call("active")):
+		# Up in the air the fidget test says she isn't standing: only being spoken to or held
+		# counts (she lands by herself either way).
+		return not is_instance_valid(pony.get("conversation_target")) and not bool(pony.get("_held"))
+	var eye: Variant = row.get("gaze_eye")
+	var ours: bool = is_instance_valid(eye) and pony.get("action_gaze_target") == eye
+	if ours: pony.set("action_gaze_target", null)
+	var free := _free(pony, row.has("stage"))
+	if ours: pony.set("action_gaze_target", eye)
+	return free
 
 
 ## A resting idle's way down and back up. True while the idle itself plays (stage "preening").
@@ -328,6 +397,36 @@ func _face(pony: Node3D, row: Dictionary, fade: float) -> void:
 			_expression(pony, row, 0.0, 0.5 * IDLES.envelope(t, total, 1.4, 1.6) * fade)
 			if t > total - 1.1 and row.wings != null and is_instance_valid(row.wings):
 				row.wings.call("release_hold", OWNER); row.wings = null
+		"scroll":
+			_move_scroll(pony, row, fade)
+			# Reading: lids a little down, ears forward; a small smile at what she reads.
+			var reading := smoothstep(IDLES.SCROLL_OPEN.x, IDLES.SCROLL_OPEN.y, t) * (1.0 - smoothstep(IDLES.SCROLL_CLOSE.x, IDLES.SCROLL_CLOSE.y, t))
+			var pleased := smoothstep(IDLES.SCROLL_NOD - 0.6, IDLES.SCROLL_NOD, t) * (1.0 - smoothstep(IDLES.SCROLL_SHOW.y, total - 0.3, t))
+			_expression(pony, row, 0.5 * pleased * fade, 0.3 * reading * fade)
+			_ears(pony, row, "ears_alert", 0.5 * reading * fade)
+		"write":
+			_move_scroll(pony, row, fade)
+			# Concentrating while she writes: lids a little down, ears forward; pleased at the end.
+			var writing := smoothstep(IDLES.WRITE_OPEN.y, IDLES.WRITE_LINES[0].x, t) * (1.0 - smoothstep(IDLES.WRITE_LINES[3].y, IDLES.WRITE_NOD, t))
+			var done := smoothstep(IDLES.WRITE_NOD - 0.4, IDLES.WRITE_NOD, t) * (1.0 - smoothstep(IDLES.WRITE_SHOW.y, total - 0.3, t))
+			_expression(pony, row, 0.5 * done * fade, 0.35 * writing * fade)
+			_ears(pony, row, "ears_alert", 0.55 * writing * fade)
+		"sun", "moon":
+			_sun(pony, row, fade)
+		"shoe":
+			_move_shoe(pony, row, fade)
+			# Curious, ears forward, while she looks it over; pleased once the pebble is out.
+			var looking := smoothstep(IDLES.SHOE_LIFT.x, IDLES.SHOE_OFF.x, t) * (1.0 - smoothstep(IDLES.SHOE_ON, IDLES.SHOE_DOWN.y, t))
+			var pleased := smoothstep(IDLES.SHOE_PEBBLE, IDLES.SHOE_PEBBLE + 0.4, t) * (1.0 - smoothstep(IDLES.SHOE_DOWN.x, total - 0.2, t))
+			_expression(pony, row, 0.5 * pleased * fade, 0.15 * looking * fade)
+			_ears(pony, row, "ears_alert", 0.6 * looking * fade)
+		"tea":
+			_move_tea(pony, row, fade)
+			# Eyes closed for each sip, then a contented little smile.
+			var sip := IDLES.tea_sip(t)
+			var after := smoothstep(IDLES.TEA_SIPS[0].y - 0.3, IDLES.TEA_SIPS[0].y + 0.3, t) * (1.0 - smoothstep(IDLES.TEA_SHOW.y, total - 0.3, t))
+			_expression(pony, row, 0.55 * after * fade, (0.15 + 0.75 * sip) * IDLES.envelope(t, total, 1.0, 1.2) * fade)
+			_mouth(pony, row, 0.0, {"open_soft": 0.25 * sip * fade})
 		"magic_sparkle":
 			_sparkle(pony, row, fade)
 			_expression(pony, row, 0.6 * IDLES.envelope(t, total, 1.0, 1.0) * fade, 0.0)
@@ -590,6 +689,7 @@ func _finish(pony: Variant) -> void:
 		if requested == str(row.rest) or (row.rest == "sit" and requested == "lie_down"): pony.request_posture("stand")
 	if row.get("wings") != null and is_instance_valid(row.wings): row.wings.call("release_hold", OWNER)
 	_drop_brush(pony, row)
+	_drop_scroll(pony, row)
 	for spark: Variant in row.get("sparks", []):
 		if is_instance_valid((spark as Array)[0]): ((spark as Array)[0] as Node).queue_free()
 
@@ -620,3 +720,479 @@ func _release_face(pony: Node3D, row: Dictionary) -> void:
 		if mouth != null and mouth.has_method("set_expression"):
 			for shape: Variant in used: mouth.set_expression(str(shape), 0.0)
 	row.lids = false; row.ears = ""; row.mouth = false
+
+
+# ---------------------------------------------------------------- the scroll
+
+## How big the scroll is (times scroll.gd's size, at size 1).
+const SCROLL_SCALE := 1.3
+## How far across each row her gaze goes (of the writing's width): her head follows her gaze,
+## so this is kept small for a slight sway rather than a full turn per line.
+const SCROLL_SWAY := 0.3
+
+## The scroll idle, moment by moment: her horn lights, a scroll appears in a flash of her magic in
+## front of her, unrolls, she reads it row by row (her attention follows the writing, so her eyes
+## and head do), rolls it up and it vanishes in another flash.
+func _move_scroll(pony: Node3D, row: Dictionary, fade: float) -> void:
+	var scroll: Variant = row.get("scroll")
+	var magic: Variant = pony.get("magic")
+	if not scroll is Node3D or not is_instance_valid(scroll) or magic == null or not is_instance_valid(magic): return
+	var t := float(row.time)
+	var size := _size(pony)
+	if not bool(row.get("lit", false)) and t > 0.3:
+		row.lit = true
+		magic.call("hold", true)
+	# Where it floats: fixed from where her head was as she started, in front of her muzzle and a
+	# little below, so it holds still while her head moves to read it.
+	if not row.has("anchor") or t < 0.1:
+		var head := _bone_at(pony, "pony_head")
+		var forward := head - _bone_at(pony, "pony_hips")
+		forward.y = 0.0
+		forward = forward.normalized() if not forward.is_zero_approx() else -pony.global_basis.z.normalized()
+		row.forward = forward
+		row.anchor = head + forward * 0.34 * size + Vector3.DOWN * 0.10 * size
+	var forward: Vector3 = row.forward
+	var colour: Color = magic.call("vivid", magic.get("color")) if magic.has_method("vivid") else magic.get("color")
+	var writes := str(row.idle) == "write"
+	var show: Vector2 = IDLES.WRITE_SHOW if writes else IDLES.SCROLL_SHOW
+	var opening: Vector2 = IDLES.WRITE_OPEN if writes else IDLES.SCROLL_OPEN
+	var closing: Vector2 = IDLES.WRITE_CLOSE if writes else IDLES.SCROLL_CLOSE
+	var gone := t > show.y or fade < 0.5
+	if t > show.x and not gone and not bool(row.get("shown", false)):
+		row.shown = true
+		(scroll as Node3D).visible = true
+		UNICORN_MAGIC.burst(scroll, Vector3.ZERO, colour, 1.4, 0.12 * size)
+		magic.call("cast", 0.8)
+		var aura: Node3D = MAGIC_AURA.create(scroll, magic.get("color"), 1.0, 0.24 * size)
+		row.glows = [aura] if aura != null else []
+		if is_instance_valid(row.get("quill")):
+			(row.quill as Node3D).visible = true
+			var quill_aura: Node3D = MAGIC_AURA.create(row.quill, magic.get("color"), 1.0, 0.07 * size)
+			if quill_aura != null: (row.glows as Array).append(quill_aura)
+	if gone and bool(row.get("shown", false)) and not bool(row.get("vanished", false)):
+		row.vanished = true
+		var flash := Node3D.new()
+		flash.name = "IdleLifeSpark"
+		(scroll as Node).get_parent().add_child(flash)
+		flash.global_position = (scroll as Node3D).global_position
+		UNICORN_MAGIC.burst(flash, Vector3.ZERO, colour, 1.6, 0.16 * size)
+		row.sparks = row.get("sparks", []) + [[flash, t, 0.0]]
+		magic.call("cast", 0.6)
+		_drop_scroll(pony, row)
+		return
+	if not bool(row.get("shown", false)): return
+	# Facing her, its top tipped back toward her a little; bobbing gently in her magic.
+	var z := (-forward + Vector3.UP * 0.3).normalized()
+	var y := (Vector3.UP - z * Vector3.UP.dot(z)).normalized()
+	var grow := smoothstep(show.x, show.x + 0.3, t)
+	var scale := maxf(SCROLL_SCALE * size * grow, 0.001)
+	(scroll as Node3D).global_basis = Basis(y.cross(z), y, z).scaled(Vector3.ONE * scale)
+	(scroll as Node3D).global_position = Vector3(row.anchor) + Vector3.UP * sin(t * 2.2) * 0.006 * size
+	var open := smoothstep(opening.x, opening.y, t) * (1.0 - smoothstep(closing.x, closing.y, t))
+	SCROLL.set_open(scroll, open)
+	if writes:
+		_move_quill(pony, row, scroll, t, scale)
+		return
+	# Her eyes on it: along each row of writing in turn, back to the start of the next.
+	var eye: Variant = row.get("gaze_eye")
+	if eye is Node3D and is_instance_valid(eye):
+		var spot := Vector3(0.0, SCROLL.HEIGHT * 0.2, 0.0)
+		var read := (t - IDLES.SCROLL_READ) / IDLES.SCROLL_LINE
+		if read >= 0.0 and read < SCROLL.LINES.size():
+			var line := int(read)
+			var u := read - line
+			# Across the row in 80% of the time, then back to the next row's start.
+			var across := lerpf(-1.0, 1.0, smoothstep(0.0, 0.8, u)) if u < 0.8 else lerpf(1.0, -1.0, (u - 0.8) / 0.2)
+			spot = SCROLL.line_spot(line if u < 0.8 else mini(line + 1, SCROLL.LINES.size() - 1), across * SCROLL_SWAY)
+		(eye as Node3D).global_position = (scroll as Node3D).global_transform * spot
+		# Held as an action gaze (a fixed look, as when she watches what she's handed), not her
+		# attention, which glances away now and then.
+		if pony.get("action_gaze_target") != eye and pony.has_method("set_action_gaze"): pony.call("set_action_gaze", eye)
+
+
+## Where the quill rests between rows and before and after writing, in the scroll's space: up
+## beside its right edge, a little toward her.
+const QUILL_REST := Vector3(0.15, 0.06, 0.04)
+## The quill's slant, in the scroll's space: up, toward her and out to the right, like a pen in
+## a hand.
+const QUILL_SLANT := Vector3(0.35, 0.75, 0.55)
+## The quill's size against the scroll's.
+const QUILL_SCALE := 1.4
+
+## The writing idle's quill: to the start of each row, along it as the ink appears behind its
+## nib (a little up-and-down scribble), lifted between rows, then back to rest. Her eyes follow
+## the nib (kept to SCROLL_SWAY of its reach across, so her head doesn't swing).
+func _move_quill(pony: Node3D, row: Dictionary, scroll: Node3D, t: float, scale: float) -> void:
+	var quill: Variant = row.get("quill")
+	if not quill is Node3D or not is_instance_valid(quill): return
+	SCROLL.set_written(scroll, IDLES.write_progress(t))
+	var tip := QUILL_REST
+	var rows: Array = IDLES.WRITE_LINES
+	if t > rows[0].x - 0.6 and t < rows[rows.size() - 1].y:
+		for i in rows.size():
+			var span: Vector2 = rows[i]
+			if t < span.x:
+				tip = SCROLL.ink_spot(i, 0.0) + Vector3(0.0, 0.0, 0.02)
+				break
+			if t <= span.y:
+				var along := (t - span.x) / (span.y - span.x)
+				tip = SCROLL.ink_spot(i, along) + Vector3(0.0, sin(t * 38.0) * 0.0025, 0.004)
+				break
+	var step := 1.0 - exp(-get_physics_process_delta_time() / 0.05)
+	var want := scroll.global_transform * tip
+	var now: Vector3 = (quill as Node3D).get_meta("idle_life_at", want)
+	now = now.lerp(want, step)
+	(quill as Node3D).set_meta("idle_life_at", now)
+	var sb := scroll.global_basis.orthonormalized()
+	var up := (sb * QUILL_SLANT).normalized()
+	var x := (sb.x - up * sb.x.dot(up)).normalized()
+	(quill as Node3D).global_basis = Basis(x, up, x.cross(up)).scaled(Vector3.ONE * scale * QUILL_SCALE)
+	(quill as Node3D).global_position = now
+	var eye: Variant = row.get("gaze_eye")
+	if eye is Node3D and is_instance_valid(eye):
+		var local := scroll.global_transform.affine_inverse() * now
+		(eye as Node3D).global_position = scroll.global_transform * Vector3(local.x * SCROLL_SWAY, local.y, 0.0)
+		if pony.get("action_gaze_target") != eye and pony.has_method("set_action_gaze"): pony.call("set_action_gaze", eye)
+
+
+## The scroll gone, her horn let go, her attention handed back.
+func _drop_scroll(pony: Variant, row: Dictionary) -> void:
+	if row.has("near_mesh") and is_instance_valid(row.get("near")):
+		(row.near as MeshInstance3D).mesh = row.near_mesh
+	row.erase("near_mesh")
+	if is_instance_valid(row.get("pebble")): (row.pebble as Node).queue_free()
+	row.erase("pebble")
+	if not row.has("scroll") and not row.has("cup") and not row.has("loose"): return
+	if row.has("glows"): UNICORN_MAGIC.unglow_object(row.glows)
+	row.erase("glows")
+	for key: String in ["scroll", "quill", "cup", "saucer", "loose"]:
+		if is_instance_valid(row.get(key)): (row[key] as Node).queue_free()
+	if is_instance_valid(pony):
+		if pony.get("action_gaze_target") == row.get("gaze_eye") and pony.has_method("set_action_gaze"):
+			pony.call("set_action_gaze", row.get("gaze_was") if is_instance_valid(row.get("gaze_was")) else null)
+		var magic: Variant = pony.get("magic")
+		if bool(row.get("lit", false)) and magic != null and is_instance_valid(magic): magic.call("hold", false)
+	if is_instance_valid(row.get("gaze_eye")): (row.gaze_eye as Node).queue_free()
+	row.erase("scroll"); row.erase("loose"); row.erase("quill"); row.erase("cup"); row.erase("saucer"); row.erase("gaze_eye"); row.lit = false
+
+
+# ---------------------------------------------------------------- tea
+
+## How big the cup and saucer are (times tea.gd's sizes, at size 1).
+const TEA_SCALE := 1.0
+
+## Her lips, between the face rig's upper and lower lip (the body's MOUNT_MOUTH is left
+## unfitted on the princesses: about 34 cm below Celestia's head).
+func _mouth_at(pony: Node3D) -> Vector3:
+	var head: Variant = pony.get("head")
+	var sk: Variant = head.get("skeleton") if head != null else null
+	if sk is Skeleton3D and is_instance_valid(sk):
+		var upper := (sk as Skeleton3D).find_bone("mFaceLipUpperCenter")
+		var lower := (sk as Skeleton3D).find_bone("mFaceLipLowerCenter")
+		if upper >= 0 and lower >= 0:
+			var g := (sk as Skeleton3D).global_transform
+			return (g * (sk as Skeleton3D).get_bone_global_pose(upper).origin).lerp(g * (sk as Skeleton3D).get_bone_global_pose(lower).origin, 0.5)
+	return _bone_at(pony, "MOUNT_MOUTH")
+
+
+## Tea, moment by moment: her horn lights, a cup on its saucer appears in a flash of her magic in
+## front of her, the cup lifts to just before her muzzle and comes to her lips for each sip,
+## tipping toward her, then goes back to the saucer and both vanish in another flash.
+func _move_tea(pony: Node3D, row: Dictionary, fade: float) -> void:
+	var cup: Variant = row.get("cup")
+	var saucer: Variant = row.get("saucer")
+	var magic: Variant = pony.get("magic")
+	if not cup is Node3D or not is_instance_valid(cup) or not is_instance_valid(saucer) or magic == null or not is_instance_valid(magic): return
+	var t := float(row.time)
+	var size := _size(pony)
+	var s := TEA_SCALE * size
+	if not bool(row.get("lit", false)) and t > 0.3:
+		row.lit = true
+		magic.call("hold", true)
+	# Her facing, and where the saucer floats: fixed from where her mouth was as she started.
+	if not row.has("anchor") or t < 0.1:
+		var forward := _bone_at(pony, "pony_head") - _bone_at(pony, "pony_hips")
+		forward.y = 0.0
+		forward = forward.normalized() if not forward.is_zero_approx() else -pony.global_basis.z.normalized()
+		row.forward = forward
+		var mouth := _mouth_at(pony)
+		row.anchor = mouth + forward * 0.2 * size + Vector3.DOWN * 0.17 * size
+		row.hold = mouth + forward * 0.13 * size + Vector3.DOWN * 0.07 * size
+		row.ahead = _bone_at(pony, "pony_head") + forward * 1.5 * size
+	var forward: Vector3 = row.forward
+	var colour: Color = magic.call("vivid", magic.get("color")) if magic.has_method("vivid") else magic.get("color")
+	var show := IDLES.TEA_SHOW
+	var gone := t > show.y or fade < 0.5
+	if t > show.x and not gone and not bool(row.get("shown", false)):
+		row.shown = true
+		(cup as Node3D).visible = true
+		(saucer as Node3D).visible = true
+		UNICORN_MAGIC.burst(saucer, Vector3.ZERO, colour, 1.4, 0.1 * size)
+		magic.call("cast", 0.8)
+		var glows: Array = []
+		for thing: Node3D in [cup, saucer]:
+			var aura: Node3D = MAGIC_AURA.create(thing, magic.get("color"), 1.0, 0.09 * size)
+			if aura != null: glows.append(aura)
+		row.glows = glows
+	if gone and bool(row.get("shown", false)) and not bool(row.get("vanished", false)):
+		row.vanished = true
+		var flash := Node3D.new()
+		flash.name = "IdleLifeSpark"
+		(cup as Node).get_parent().add_child(flash)
+		flash.global_position = (saucer as Node3D).global_position
+		UNICORN_MAGIC.burst(flash, Vector3.ZERO, colour, 1.6, 0.13 * size)
+		row.sparks = row.get("sparks", []) + [[flash, t, 0.0]]
+		magic.call("cast", 0.6)
+		_drop_scroll(pony, row)
+		return
+	if not bool(row.get("shown", false)): return
+	var grow := maxf(s * smoothstep(show.x, show.x + 0.3, t), 0.001)
+	var bob := Vector3.UP * sin(t * 2.0) * 0.004 * size
+	var right := Vector3.UP.cross(-forward).normalized()
+	# The saucer: level, floating where it appeared.
+	(saucer as Node3D).global_basis = Basis(right, Vector3.UP, right.cross(Vector3.UP)).scaled(Vector3.ONE * grow)
+	(saucer as Node3D).global_position = Vector3(row.anchor) + bob
+	var on_saucer := Vector3(row.anchor) + bob + Vector3.UP * 0.008 * grow
+	# The cup: on the saucer, up before her muzzle, to her lips for each sip (tipped toward her),
+	# and back down.
+	var sip := IDLES.tea_sip(t)
+	var held := Vector3(row.hold) + bob
+	var up := smoothstep(IDLES.TEA_LIFT.x, IDLES.TEA_LIFT.y, t) * (1.0 - smoothstep(IDLES.TEA_DOWN.x, IDLES.TEA_DOWN.y, t))
+	var tip := deg_to_rad(55.0) * sip
+	# Upright, handle to her right, its top tipped back toward her by `tip`.
+	var cup_up := (Vector3.UP * cos(tip) - forward * sin(tip)).normalized()
+	var basis := Basis(right, cup_up, right.cross(cup_up)).orthonormalized()
+	var want := on_saucer.lerp(held, up)
+	if sip > 0.0:
+		# Its rim (the side nearest her) at her lips.
+		var lips := _mouth_at(pony) - forward * 0.025 * size + Vector3.DOWN * 0.01 * size
+		var rim := basis * (TEA.rim_point(basis.inverse() * -forward) * grow)
+		want = held.lerp(lips - rim, sip)
+	var step := 1.0 - exp(-get_physics_process_delta_time() / 0.08)
+	var now: Vector3 = (cup as Node3D).get_meta("idle_life_at", want)
+	now = now.lerp(want, step)
+	(cup as Node3D).set_meta("idle_life_at", now)
+	(cup as Node3D).global_basis = basis.scaled(Vector3.ONE * grow)
+	(cup as Node3D).global_position = now
+	# Her eyes on the cup, easing to straight ahead for each sip: a gaze on a cup at her lips would
+	# pull her head down after it, and letting go lets her head wander off mid-sip.
+	var eye: Variant = row.get("gaze_eye")
+	if eye is Node3D and is_instance_valid(eye) and pony.has_method("set_action_gaze"):
+		(eye as Node3D).global_position = (now + cup_up * TEA.CUP_HEIGHT * grow).lerp(Vector3(row.ahead), sip)
+		if pony.get("action_gaze_target") != eye: pony.call("set_action_gaze", eye)
+
+
+# ---------------------------------------------------------------- the shoe check
+
+## The shoe check, moment by moment: her hoof lifts, her horn lights, the shoe slides off its
+## hoof in her magic (her body mesh swapped for one without it, a loose copy drawn instead),
+## comes up before her face, turns upside down and is shaken (a pebble drops out and falls to
+## the ground), turns back, goes back onto her hoof and her own mesh is swapped back in.
+func _move_shoe(pony: Node3D, row: Dictionary, fade: float) -> void:
+	var magic: Variant = pony.get("magic")
+	var near: Variant = row.get("near")
+	var sk: Variant = row.get("body_sk")
+	if not is_instance_valid(near) or not is_instance_valid(sk): return
+	var t := float(row.time)
+	var size := _size(pony)
+	var leg: String = row.leg
+	var has_magic: bool = magic != null and is_instance_valid(magic)
+	if not row.has("forward") or t < 0.1:
+		var forward := _bone_at(pony, "pony_head") - _bone_at(pony, "pony_hips")
+		forward.y = 0.0
+		forward = forward.normalized() if not forward.is_zero_approx() else -pony.global_basis.z.normalized()
+		row.forward = forward
+		# Up beside her muzzle on the lifted leg's side, clear of the mane hanging before her chest.
+		var beside := Vector3.UP.cross(-forward).normalized() * float(row.side)
+		row.beside = beside
+		row.present = _bone_at(pony, "pony_head") + forward * 0.26 * size + beside * 0.2 * size + Vector3.DOWN * 0.05 * size
+	var forward: Vector3 = row.forward
+	var right := Vector3.UP.cross(-forward).normalized()
+	var colour: Color = (magic.call("vivid", magic.get("color")) if magic.has_method("vivid") else magic.get("color")) if has_magic else Color.WHITE
+	var hoof := SHOE.on_hoof(sk, leg)
+	var eye: Variant = row.get("gaze_eye")
+	var looking_at := hoof.origin
+	var off := t >= IDLES.SHOE_OFF.x and t < IDLES.SHOE_ON and fade > 0.5
+	if off and not row.has("loose") and not bool(row.get("back", false)):
+		var loose := SHOE.loose_shoe(near, sk, leg)
+		if loose == null: return
+		(pony.get_parent() if pony.get_parent() != null else pony).add_child(loose)
+		loose.global_transform = hoof
+		(near as MeshInstance3D).mesh = row.without
+		row.loose = loose
+		if has_magic:
+			magic.call("hold", true)
+			row.lit = true
+			var aura: Node3D = MAGIC_AURA.create(loose, magic.get("color"), 1.0, 0.07 * size)
+			row.glows = [aura] if aura != null else []
+	if row.has("loose") and not off:
+		# Back on her hoof: her own mesh again.
+		row.back = true
+		var on_at: Vector3 = (row.loose as Node3D).global_position if is_instance_valid(row.loose) else hoof.origin
+		_drop_scroll(pony, row)
+		if has_magic:
+			var flash := Node3D.new()
+			flash.name = "IdleLifeSpark"
+			(pony.get_parent() if pony.get_parent() != null else pony).add_child(flash)
+			flash.global_position = on_at
+			UNICORN_MAGIC.burst(flash, Vector3.ZERO, colour, 0.8, 0.05 * size)
+			row.sparks = row.get("sparks", []) + [[flash, t, 0.0]]
+	var loose: Variant = row.get("loose")
+	if loose is Node3D and is_instance_valid(loose):
+		# Off along the hoof's length (its bone's +Y runs toward the tip of her hoof).
+		var slid := hoof
+		slid.origin += hoof.basis.y.normalized() * 0.07 * size * smoothstep(IDLES.SHOE_OFF.x, IDLES.SHOE_OFF.y, t)
+		# Held up before her: sole down; upside down: sole up.
+		var upright := Basis(right, Vector3.DOWN, right.cross(Vector3.DOWN)).orthonormalized()
+		var flip := smoothstep(IDLES.SHOE_FLIP.x, IDLES.SHOE_FLIP.y, t) * (1.0 - smoothstep(IDLES.SHOE_UNFLIP.x, IDLES.SHOE_UNFLIP.y, t))
+		var held := Basis(right, PI * flip) * upright
+		var shake := smoothstep(IDLES.SHOE_SHAKE.x, IDLES.SHOE_SHAKE.x + 0.15, t) * (1.0 - smoothstep(IDLES.SHOE_SHAKE.y - 0.15, IDLES.SHOE_SHAKE.y, t))
+		var present: Vector3 = Vector3(row.present) + Vector3.UP * sin(t * 34.0) * 0.014 * size * shake
+		held = Basis(forward, sin(t * 34.0 + 1.0) * 0.12 * shake) * held
+		var going := smoothstep(IDLES.SHOE_UP.x, IDLES.SHOE_UP.y, t) * (1.0 - smoothstep(IDLES.SHOE_BACK.x, IDLES.SHOE_BACK.y, t))
+		var from := slid if t < IDLES.SHOE_BACK.x else hoof
+		var scale := hoof.basis.get_scale()
+		var q := Quaternion(from.basis.orthonormalized()).slerp(Quaternion(held.orthonormalized()), going)
+		# Down away from her hoof, swung well out to her side (clear of her chest, her other leg and
+		# the mane hanging over her side), then up beside her muzzle; back the same way.
+		var path := _shoe_path(pony, row, from.origin, present, going)
+		(loose as Node3D).global_transform = Transform3D(Basis(q).scaled(scale), path)
+		looking_at = (loose as Node3D).global_position
+		# The pebble.
+		if t >= IDLES.SHOE_PEBBLE and not row.has("pebble"):
+			var pebble := MeshInstance3D.new()
+			pebble.name = "IdleLifePebble"
+			var ball := SphereMesh.new()
+			ball.radius = 0.009 * size
+			ball.height = 0.014 * size
+			pebble.mesh = ball
+			var pm := StandardMaterial3D.new()
+			pm.albedo_color = Color(0.48, 0.45, 0.42)
+			pm.roughness = 0.9
+			pebble.material_override = pm
+			(pony.get_parent() if pony.get_parent() != null else pony).add_child(pebble)
+			pebble.global_position = (loose as Node3D).global_position
+			pebble.set_meta("fall", 0.0)
+			row.pebble = pebble
+	var pebble: Variant = row.get("pebble")
+	if pebble is Node3D and is_instance_valid(pebble):
+		var dt := get_physics_process_delta_time()
+		var v := float((pebble as Node3D).get_meta("fall")) + 9.8 * dt
+		var floor := pony.global_position.y + 0.006 * size
+		var at := (pebble as Node3D).global_position
+		at.y = maxf(at.y - v * dt, floor)
+		(pebble as Node3D).set_meta("fall", v if at.y > floor else 0.0)
+		(pebble as Node3D).global_position = at
+	if eye is Node3D and is_instance_valid(eye) and pony.has_method("set_action_gaze"):
+		(eye as Node3D).global_position = looking_at
+		if pony.get("action_gaze_target") != eye: pony.call("set_action_gaze", eye)
+
+
+# ---------------------------------------------------------------- the sun check
+
+## Around sunrise or sunset: the sun low, just below or above the horizon.
+func _sun_hours() -> bool:
+	var clock := get_node_or_null("/root/TimeOfDay")
+	if clock == null or not clock.has_method("sun_elevation"): return false
+	var e := float(clock.sun_elevation())
+	return e > IDLES.SUN_HOURS.x and e < IDLES.SUN_HOURS.y
+
+
+func _sun_pony(pony: Node3D) -> bool:
+	var identity: Variant = pony.get("identity")
+	return _princess(pony) and identity != null and str(identity.get("id")) in IDLES.SUN_ONLY
+
+
+func _moon_pony(pony: Node3D) -> bool:
+	var identity: Variant = pony.get("identity")
+	return _princess(pony) and identity != null and str(identity.get("id")) in IDLES.MOON_ONLY
+
+
+## Around moonrise or moonset, with enough of the moon lit to be worth a look.
+func _moon_hours() -> bool:
+	var clock := get_node_or_null("/root/TimeOfDay")
+	if clock == null or not clock.has_method("moon_direction") or not clock.has_method("moon_lit_fraction"): return false
+	var e := (clock.call("moon_direction") as Vector3).y
+	return e > IDLES.SUN_HOURS.x and e < IDLES.SUN_HOURS.y and float(clock.call("moon_lit_fraction")) >= IDLES.MOON_LIT
+
+
+## Toward the sun (or, for `moon`, the moon) from here; a low southern sky when the clock can't say.
+func _sun_dir(moon := false) -> Vector3:
+	var clock := get_node_or_null("/root/TimeOfDay")
+	var method := "moon_direction" if moon else "sun_direction"
+	if clock != null and clock.has_method(method):
+		var d: Vector3 = clock.call(method)
+		if d.is_finite() and not d.is_zero_approx(): return d.normalized()
+	return Vector3(0.0, 0.2, -1.0).normalized()
+
+
+## The sun check, moment by moment: up in her own flight, she turns to face the sun, looks up at
+## it, lights her horn (a cast and a soft burst rising toward it) with a squinting, pleased
+## smile, then the flight lands her.
+func _sun(pony: Node3D, row: Dictionary, fade: float) -> void:
+	var t := float(row.time)
+	var flight: Variant = row.get("flight")
+	var flying: bool = flight != null and bool(flight.call("active"))
+	var hovering: bool = flying and str(flight.get("state")) == "hover"
+	if hovering and not row.has("hover_from"): row.hover_from = t
+	var since := t - float(row.get("hover_from", INF))
+	var sun := _sun_dir(str(row.idle) == "moon")
+	# Turn to face it (by yaw only) while up.
+	if flying:
+		var flat := Vector3(sun.x, 0.0, sun.z)
+		if not flat.is_zero_approx():
+			var want := atan2(-flat.x, -flat.z)
+			var step := 1.0 - exp(-get_physics_process_delta_time() / 0.5)
+			pony.global_rotation.y = lerp_angle(pony.global_rotation.y, want, step)
+	# Her eyes on the sun from when she's up until she starts down.
+	var eye: Variant = row.get("gaze_eye")
+	if eye is Node3D and is_instance_valid(eye) and pony.has_method("set_action_gaze"):
+		if hovering:
+			(eye as Node3D).global_position = _bone_at(pony, "pony_head") + sun * 30.0
+			if pony.get("action_gaze_target") != eye: pony.call("set_action_gaze", eye)
+		elif pony.get("action_gaze_target") == eye:
+			pony.call("set_action_gaze", row.get("gaze_was") if is_instance_valid(row.get("gaze_was")) else null)
+	# The horn.
+	var magic: Variant = pony.get("magic")
+	var glow := smoothstep(IDLES.SUN_GLOW.x, IDLES.SUN_GLOW.x + 0.4, since) * (1.0 - smoothstep(IDLES.SUN_GLOW.y - 0.4, IDLES.SUN_GLOW.y, since))
+	if magic != null and is_instance_valid(magic) and since >= IDLES.SUN_GLOW.x and not bool(row.get("cast", false)):
+		row.cast = true
+		magic.call("cast", IDLES.SUN_GLOW.y - IDLES.SUN_GLOW.x)
+		var colour: Color = magic.call("vivid", magic.get("color")) if magic.has_method("vivid") else magic.get("color")
+		var holder := Node3D.new()
+		holder.name = "IdleLifeSpark"
+		(pony.get_parent() if pony.get_parent() != null else pony).add_child(holder)
+		holder.global_position = _horn_tip(pony, magic)
+		UNICORN_MAGIC.burst(holder, Vector3.ZERO, colour, 2.4, 0.1 * _size(pony))
+		row.sparks = row.get("sparks", []) + [[holder, t, 0.0]]
+	for spark: Variant in row.get("sparks", []):
+		var holder: Variant = (spark as Array)[0]
+		if not is_instance_valid(holder): continue
+		var age := t - float((spark as Array)[1])
+		(holder as Node3D).global_position = _horn_tip(pony, magic) + sun * (1.0 - exp(-age * 0.8)) * 0.8 * _size(pony)
+		if age > 3.0: (holder as Node).queue_free()
+	# A squint at the bright sun and a warm smile while she tends it.
+	var up_there := smoothstep(0.0, 0.8, since) if hovering or since > 0.0 else 0.0
+	_expression(pony, row, 0.6 * glow * fade, (0.35 * up_there * (1.0 if flying else 0.0) + 0.25 * glow) * fade)
+
+
+## How far the shoe drops below her hoof, and swings out to her side, on its way up (metres at
+## size 1).
+const SHOE_DROP := 0.1
+const SHOE_SWING := 0.4
+
+## The shoe's way from her hoof (`u` 0) to beside her muzzle (`u` 1): down, out, then a rising
+## curve in to beside her muzzle, each leg eased in and out.
+func _shoe_path(pony: Node3D, row: Dictionary, hoof: Vector3, present: Vector3, u: float) -> Vector3:
+	var size := _size(pony)
+	var beside: Vector3 = row.beside
+	var down := hoof + Vector3.DOWN * SHOE_DROP * size
+	down.y = maxf(down.y, pony.global_position.y + 0.06 * size)
+	var out := down + beside * SHOE_SWING * size
+	if u < 0.22: return hoof.lerp(down, smoothstep(0.0, 0.22, u))
+	if u < 0.5: return down.lerp(out, smoothstep(0.22, 0.5, u))
+	var k := smoothstep(0.5, 1.0, u)
+	# Up first, then in.
+	var c1 := out + Vector3.UP * (present.y - out.y) * 0.75
+	var c2 := present + beside * 0.15 * size
+	return out.bezier_interpolate(c1, c2, present, k)
