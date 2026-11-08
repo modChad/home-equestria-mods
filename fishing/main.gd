@@ -8,6 +8,11 @@ const LINE := preload("res://mods/fishing/line.gd")
 const FEEDBACK := preload("res://mods/fishing/feedback.gd")
 const HUD := preload("res://mods/fishing/hud.gd")
 const CATCH_TABLE := preload("res://mods/fishing/catch_table.gd")
+const BUCKET := preload("res://mods/fishing/bucket.gd")
+const STATIONS := preload("res://world/mechanics/stations/stations.gd")
+var bucket: Node3D
+var _local_state: Dictionary = {}   # stands in for the world save where there's no game (labs)
+var _catch_serial := 0
 var hud: CanvasLayer
 var _rods: Dictionary = {}   # rod -> {old_line, line, feedback}
 var _watch: Node             # at the end of the root, so its _input runs before the game's
@@ -53,11 +58,20 @@ func _hands_for(rod: Node) -> Node:
 func _caught(at: Vector3, rod: Node) -> void:
 	if not is_instance_valid(rod): return
 	var line: RefCounted = rod.line
-	if str(rod.holder) != "player" or line.fish.is_empty():
+	if line.fish.is_empty():
 		if rod.has_method("_landed"): rod.call("_landed", at)
+		return
+	if str(rod.holder) != "player":
+		# A pony's catch: into the live well, with the game's fishing bookkeeping.
+		var theirs: Dictionary = line.fish.duplicate()
+		_bookkeeping(rod, theirs)
+		_ensure_bucket(rod)
+		if is_instance_valid(bucket) and not bucket.full(): bucket.add(theirs.id, theirs.length)
+		elif rod.has_method("_landed"): rod.call("_landed", at)
 		return
 	var fish: Dictionary = line.fish.duplicate()
 	line.land(fish)
+	_bookkeeping(rod, fish)
 	var note := _best_note(fish)
 	var fb: Node = _rods[rod].feedback
 	if note != "": preload("res://mods/fishing/sounds.gd").play_ui(self, "jingle_best" if note.contains("best") else "jingle", -6.0)
@@ -71,13 +85,18 @@ func _best_note(fish: Dictionary) -> String:
 	if fish.length > best: return "New personal best!"
 	return ""
 
+## This mod's part of the world save (Mods.state), or a stand-in with no game loaded.
+func state() -> Dictionary:
+	if is_instance_valid(Mods.get("game")) and Mods.has_method("state"): return Mods.state("fishing")
+	return _local_state
+
 func _bests() -> Dictionary:
-	var st: Dictionary = Mods.state("fishing") if Mods.has_method("state") else {}
+	var st: Dictionary = state()
 	if not st.get("best") is Dictionary: st["best"] = {}
 	return st.best
 
 func _record(fish: Dictionary, kept: bool) -> void:
-	var st: Dictionary = Mods.state("fishing") if Mods.has_method("state") else {}
+	var st: Dictionary = state()
 	var bests := _bests()
 	if fish.length > float(bests.get(fish.id, 0.0)): bests[fish.id] = snappedf(fish.length, .001)
 	if not st.get("count") is Dictionary: st["count"] = {}
@@ -92,7 +111,40 @@ func _dropped(fish: Dictionary, rod: Node) -> void:
 	_record(fish, true)
 	_put_in_bucket(rod, fish)
 
+## The game's own records of a catch (fishing_runtime.gd _landed): the station's "caught" fact,
+## and a shared memory when the player and ponies fish together.
+func _bookkeeping(rod: Node, fish: Dictionary) -> void:
+	var runtime: Node = rod.get_parent().get_parent()
+	var companions: Node = runtime.get("companions") if runtime != null else null
+	var catcher := "player"
+	if str(rod.holder) != "player":
+		catcher = ""
+		if is_instance_valid(companions) and companions.has_method("actor_for_rod"):
+			var pony: Node = companions.actor_for_rod(rod)
+			for lease: Dictionary in companions.get("leases"):
+				if lease.get("actor") == pony: catcher = str(lease.get("id", ""))
+	STATIONS.note(rod, "fishing_dock", catcher, ["food:fish-" + str(fish.id)], "caught")
+	var host: Node = runtime.get("host") if runtime != null else null
+	if is_instance_valid(host) and is_instance_valid(host.get("relationship_runtime")) and is_instance_valid(companions) \
+			and companions.has_method("_player_fishing") and companions._player_fishing():
+		var participants: Array = []
+		for lease: Dictionary in companions.get("leases"): participants.append(str(lease.id))
+		_catch_serial += 1
+		if not participants.is_empty():
+			host.relationship_runtime.shared_activity("fishing", rod.get_parent().global_position, "modfish_%d_%d" % [get_instance_id(), _catch_serial], participants)
+
+func _ensure_bucket(rod: Node) -> void:
+	if is_instance_valid(bucket): return
+	var dock: Node3D = rod.get_parent()
+	if dock.get("bucket") == null: return
+	bucket = BUCKET.new(); bucket.name = "FishingLiveWell"; dock.add_child(bucket)
+	bucket.setup(dock, _inventory(rod), state)
+
 func _put_in_bucket(rod: Node, fish: Dictionary) -> void:
+	_ensure_bucket(rod)
+	if is_instance_valid(bucket) and not bucket.full():
+		bucket.add(fish.id, fish.length); return
+	# A full live well: the fish lands beside it as a loose item instead.
 	var dock: Node = rod.get_parent()
 	var into: Vector3 = dock.landing_point() if dock.has_method("landing_point") else rod.global_position
 	var inv: Node = _inventory(rod)
@@ -106,6 +158,7 @@ func keep(rod: Node) -> void:
 	var fish: Dictionary = rod.line.fish.duplicate()
 	var dock: Node = rod.get_parent()
 	var into: Vector3 = dock.landing_point() if dock.has_method("landing_point") else rod.global_position
+	if is_instance_valid(bucket): into = bucket.global_position + Vector3.UP * bucket.water_h
 	_busy[rod] = true; hud.clear_card()
 	_record(fish, true)
 	rod.line.fish = {}  # handed over: a reset now won't count as dropping it
@@ -130,6 +183,9 @@ func release(rod: Node) -> void:
 ## Desktop: left click keeps, right click releases, while a catch hangs on the player's rod.
 ## Taking the rod back to the rack (E/Q) keeps it.
 func on_input(event: InputEvent) -> void:
+	if is_instance_valid(bucket) and event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_E \
+			and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and _landed_rod() == null and bucket.desktop_take():
+		get_viewport().set_input_as_handled(); return
 	var rod := _landed_rod()
 	if rod == null or not _desktop(rod): return
 	if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED: return
@@ -148,6 +204,12 @@ func on_physics() -> void:
 		if not is_instance_valid(rod): continue
 		# The rod went back to the rack (or the hand let go) with a fish still on: keep it.
 		if str(rod.line.state) == "landed" and str(rod.holder) != "player" and not _busy.has(rod): keep(rod)
+	if not is_instance_valid(bucket):
+		for r: Node in _rods:
+			if is_instance_valid(r) and is_instance_valid(_inventory(r)): _ensure_bucket(r); break
+	elif bucket.inventory == null:
+		for r: Node in _rods:
+			if is_instance_valid(r): bucket.inventory = _inventory(r); break
 	var rod := _landed_rod()
 	if rod == null or _desktop(rod): return
 	var hands := _hands_for(rod); var inv := _inventory(rod)
@@ -175,6 +237,7 @@ func _inventory(rod: Node) -> Node:
 
 func _exit_tree() -> void:
 	if is_instance_valid(_watch): _watch.queue_free()
+	if is_instance_valid(bucket): bucket.queue_free()
 	for rod: Node in _rods.keys():
 		if not is_instance_valid(rod): continue
 		var entry: Dictionary = _rods[rod]
