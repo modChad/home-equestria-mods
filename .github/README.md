@@ -16,6 +16,8 @@ Each mod is one `.pck` file. Download it from the table below (or all of them fr
 | [Balloon Boarding](balloon_boarding/README.md) | 1.0.0 | [balloon-boarding-v1.0.0.pck](https://github.com/modChad/home-equestria-mods/raw/main/release_packs/balloon-boarding-v1.0.0.pck) | A pony you carry into the hot-air balloon stays aboard, and a follower who stops short of the ramp is helped in. |
 | [Teleport](teleport/README.md) | 1.0.0 | [teleport-v1.0.0.pck](https://github.com/modChad/home-equestria-mods/raw/main/release_packs/teleport-v1.0.0.pck) | Adds `places` and `tp` to the debug console: jump to a place, a pony or coordinates. |
 | [Pegasus Ride](pegasus_ride_v2/Readme.txt) | 2.2.1 | [pegasus-ride-v2-v2.2.1.pck](https://github.com/modChad/home-equestria-mods/raw/main/release_packs/pegasus-ride-v2-v2.2.1.pck) | Ride on the back of a winged friend, Celestia and Luna included. Someone else's mod, adapted for 0.3.0 (see its [CHANGES.md](pegasus_ride_v2/CHANGES.md)). |
+| [Fishing](fishing/README.md) | 0.2.0 | [fishing-v0.2.0.pck](https://github.com/modChad/home-equestria-mods/raw/main/release_packs/fishing-v0.2.0.pck) | The river pier's fishing, made readable: a bigger float, splashes and ripples, a clear bite you can feel, five fish species that depend on the water, and a catch you can keep or release. |
+| [Kissing](kissing/README.md) | 1.0.0 | [kissing-v1.0.0.pck](https://github.com/modChad/home-equestria-mods/raw/main/release_packs/kissing-v1.0.0.pck) | Hold K to kiss the pony in front of you, no carrying needed: she comes to you and reaches up to your lips. In VR, lean in close. Whether she kisses back, and how deeply, follows the game's own friendship and romance rules. Ponies nearby remember seeing it. |
 
 ## Installing
 
