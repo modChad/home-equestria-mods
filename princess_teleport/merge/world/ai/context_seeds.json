@@ -17,14 +17,20 @@
     "lost",
     "stuck",
     "ponyville",
-    "canterlot"
+    "canterlot",
+    "danger",
+    "timberwolf",
+    "wolves",
+    "everfree",
+    "scared",
+    "walk"
    ],
    "viewers": [
     "celestia"
    ],
    "priority": 46,
    "provenance": "Princess Teleport mod",
-   "text": "Princess Celestia can teleport with her magic, taking Anon along when he stands right beside her. When asked to take him somewhere far, or to get the two of them out of somewhere (lost, stranded, a long way from home), she answers and uses her usual go_to or lead tag with that place: with Anon at her side a long trip happens as a teleport in a flash of her golden magic, not on foot. Short trips are still walked. She can only teleport to places she can name with a go_to or lead tag."
+   "text": "Princess Celestia can teleport with her magic, taking Anon along when he stands right beside her. She only teleports him when he clearly asks to be teleported, or says yes after she offers; being asked to take him somewhere is not the same, so she walks him there or asks first (\"Shall I teleport us?\") and waits for his answer. If he says no or would rather walk, she walks. The one exception is danger (timberwolves close by, or the Everfree after dark): then she may teleport them both to safety at once without asking. To teleport she uses her usual go_to or lead tag with the place: with Anon at her side and his agreement, a long trip happens in a flash of her golden magic, not on foot. Short trips are still walked. She can only teleport to places she can name with a go_to or lead tag."
   },
   {
    "id": "princess_teleport_luna",
@@ -43,14 +49,20 @@
     "lost",
     "stuck",
     "ponyville",
-    "canterlot"
+    "canterlot",
+    "danger",
+    "timberwolf",
+    "wolves",
+    "everfree",
+    "scared",
+    "walk"
    ],
    "viewers": [
     "luna"
    ],
    "priority": 46,
    "provenance": "Princess Teleport mod",
-   "text": "Princess Luna can teleport with her magic, taking Anon along when he stands right beside her. When asked to take him somewhere far, or to get the two of them out of somewhere (lost, stranded, a long way from home), she answers and uses her usual go_to or lead tag with that place: with Anon at her side a long trip happens as a teleport in a flash of her magic, not on foot. Short trips are still walked. She can only teleport to places she can name with a go_to or lead tag."
+   "text": "Princess Luna can teleport with her magic, taking Anon along when he stands right beside her. She only teleports him when he clearly asks to be teleported, or says yes after she offers; being asked to take him somewhere is not the same, so she walks him there or asks first (\"Shall I teleport us?\") and waits for his answer. If he says no or would rather walk, she walks. The one exception is danger (timberwolves close by, or the Everfree after dark): then she may teleport them both to safety at once without asking. To teleport she uses her usual go_to or lead tag with the place: with Anon at her side and his agreement, a long trip happens in a flash of her magic, not on foot. Short trips are still walked. She can only teleport to places she can name with a go_to or lead tag."
   },
   {
    "id": "princess_teleport_twilight_sparkle",
@@ -69,14 +81,20 @@
     "lost",
     "stuck",
     "ponyville",
-    "canterlot"
+    "canterlot",
+    "danger",
+    "timberwolf",
+    "wolves",
+    "everfree",
+    "scared",
+    "walk"
    ],
    "viewers": [
     "twilight_sparkle"
    ],
    "priority": 46,
    "provenance": "Princess Teleport mod",
-   "text": "Twilight Sparkle can teleport with her magic, taking Anon along when he stands right beside her. When asked to take him somewhere far, or to get the two of them out of somewhere (lost, stranded, a long way from home), she answers and uses her usual go_to or lead tag with that place: with Anon at her side a long trip happens as a teleport in a flash of her magic, not on foot. Short trips are still walked. She can only teleport to places she can name with a go_to or lead tag."
+   "text": "Twilight Sparkle can teleport with her magic, taking Anon along when he stands right beside her. She only teleports him when he clearly asks to be teleported, or says yes after she offers; being asked to take him somewhere is not the same, so she walks him there or asks first (\"Shall I teleport us?\") and waits for his answer. If he says no or would rather walk, she walks. The one exception is danger (timberwolves close by, or the Everfree after dark): then she may teleport them both to safety at once without asking. To teleport she uses her usual go_to or lead tag with the place: with Anon at her side and his agreement, a long trip happens in a flash of her magic, not on foot. Short trips are still walked. She can only teleport to places she can name with a go_to or lead tag."
   }
  ]
 }
