@@ -1,0 +1,26 @@
+{
+	"tags": {
+		"food:fish-trout": [
+			"fish"
+		],
+		"food:fish-perch": [
+			"fish"
+		],
+		"food:fish-carp": [
+			"fish"
+		],
+		"food:fish-catfish": [
+			"fish"
+		],
+		"food:fish-sunfish": [
+			"fish"
+		]
+	},
+	"values": {
+		"food:fish-trout": 8,
+		"food:fish-perch": 6,
+		"food:fish-carp": 10,
+		"food:fish-catfish": 12,
+		"food:fish-sunfish": 4
+	}
+}

@@ -1,0 +1,87 @@
+{
+	"fish-trout": {
+		"name": "Trout",
+		"category": "fish",
+		"stack": 16,
+		"consume": false,
+		"drink": false,
+		"container": "",
+		"description": "A speckled river trout, pink along its side. Likes cold, fast water. (Fishing mod)",
+		"mass": 0.614,
+		"size_m": [
+			0.08,
+			0.12,
+			0.48
+		],
+		"price_bits": 0,
+		"model": "../../../mods/fishing/models/trout"
+	},
+	"fish-perch": {
+		"name": "Perch",
+		"category": "fish",
+		"stack": 16,
+		"consume": false,
+		"drink": false,
+		"container": "",
+		"description": "A striped perch with orange fins. Found round weeds in lakes and slow water. (Fishing mod)",
+		"mass": 0.259,
+		"size_m": [
+			0.06,
+			0.096,
+			0.36
+		],
+		"price_bits": 0,
+		"model": "../../../mods/fishing/models/perch"
+	},
+	"fish-carp": {
+		"name": "Carp",
+		"category": "fish",
+		"stack": 16,
+		"consume": false,
+		"drink": false,
+		"container": "",
+		"description": "A heavy golden carp. Loves warm, still water and muddy bottoms. (Fishing mod)",
+		"mass": 1.597,
+		"size_m": [
+			0.11,
+			0.198,
+			0.66
+		],
+		"price_bits": 0,
+		"model": "../../../mods/fishing/models/carp"
+	},
+	"fish-catfish": {
+		"name": "Catfish",
+		"category": "fish",
+		"stack": 16,
+		"consume": false,
+		"drink": false,
+		"container": "",
+		"description": "A whiskered catfish. Bites best after dark. (Fishing mod)",
+		"mass": 2.074,
+		"size_m": [
+			0.12,
+			0.132,
+			0.72
+		],
+		"price_bits": 0,
+		"model": "../../../mods/fishing/models/catfish"
+	},
+	"fish-sunfish": {
+		"name": "Sunfish",
+		"category": "fish",
+		"stack": 16,
+		"consume": false,
+		"drink": false,
+		"container": "",
+		"description": "A little round sunfish, orange-bellied. Lives in calm, weedy shallows. (Fishing mod)",
+		"mass": 0.077,
+		"size_m": [
+			0.04,
+			0.108,
+			0.24
+		],
+		"price_bits": 0,
+		"model": "../../../mods/fishing/models/sunfish"
+	}
+}
