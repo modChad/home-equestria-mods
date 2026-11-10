@@ -26,7 +26,11 @@ const MANE_BRUSH := "food:groom-mane-brush"
 const COAT_BRUSH := "food:groom-coat-brush"
 ## Bristle tips in the item visual's frame (the game centres the model on its bounds;
 ## tools/make_models.gd prints those centres).
-const BRISTLE := {"food:groom-mane-brush": Vector3(0, -0.0214, -0.07685), "food:groom-coat-brush": Vector3(0, -0.0305, 0)}
+const BRISTLE := {"food:groom-mane-brush": Vector3(0, -0.026, -0.08298), "food:groom-coat-brush": Vector3(0, -0.0335, 0)}
+## On desktop the brush matches the pony it strokes: the square root of her body scale (a filly
+## 0.62, a "Hoers" stallion 2.76), kept within these bounds so it never dwarfs Anon's hand.
+const BRUSH_SCALE_MIN := 0.8
+const BRUSH_SCALE_MAX := 1.6
 const INPUT := preload("res://mods/grooming/input_catcher.gd")
 ## The game's spa feathers: stray feathers pinned crooked on her open wing, and the loose feather
 ## that drifts down once one comes free (world/minigames/spa/spa_feathers.gd).
@@ -344,26 +348,35 @@ func _animate_desktop_brush(delta: float) -> void:
 	along = along.normalized()
 	_desk_stroke += delta * (1.4 if tool in ["mane", "tail"] else 2.2)
 	var t := fposmod(_desk_stroke, 1.0)
-	var length := 0.12 if tool in ["mane", "tail"] else 0.07
+	var size := _brush_scale(pony)
+	var length := (0.12 if tool in ["mane", "tail"] else 0.07) * size
 	# Mane and tail: a long stroke down, lifted on the way back. Coat: short brisk flicks with a curl.
 	var travel := 0.0
 	var lift := 0.0
 	if t < 0.7:
 		travel = lerpf(-0.5, 0.5, smoothstep(0.0, 1.0, t / 0.7))
 	else:
-		travel = lerpf(0.5, -0.5, smoothstep(0.0, 1.0, (t - 0.7) / 0.3)); lift = sin((t - 0.7) / 0.3 * PI) * 0.03
-	var side_curl := 0.0 if tool != "coat" else sin(_desk_stroke * TAU) * 0.012
+		travel = lerpf(0.5, -0.5, smoothstep(0.0, 1.0, (t - 0.7) / 0.3)); lift = sin((t - 0.7) / 0.3 * PI) * 0.03 * size
+	var side_curl := 0.0 if tool != "coat" else sin(_desk_stroke * TAU) * 0.012 * size
 	var tangent := normal.cross(along).normalized()
 	var point: Vector3 = Vector3(_desk_hit.point) + along * travel * length + normal * lift + tangent * side_curl
 	# Brush frame: bristles (-Y) into her, head (-Z) along the stroke.
 	var y := normal
 	var z := -along
 	var x := y.cross(z).normalized()
-	var brush_basis := Basis(x, y, z).orthonormalized()
+	var brush_basis := Basis(x, y, z).orthonormalized() * Basis.from_scale(Vector3.ONE * size)
 	var bristle: Vector3 = BRISTLE.get(str(_desk_item.get_meta("item_id", "")), Vector3.ZERO)
 	var goal := Transform3D(brush_basis, point - brush_basis * bristle)
 	var local_goal := (_desk_item as Node3D).global_transform.affine_inverse() * goal
 	model.transform = Transform3D.IDENTITY.interpolate_with(local_goal, _desk_blend)
+
+
+
+## Desktop brush size on this pony (see BRUSH_SCALE_MIN); 1.0 when her size is unknown.
+func _brush_scale(pony: Node) -> float:
+	var body: Variant = pony.get("body_scale") if is_instance_valid(pony) else null
+	var scale_factor: float = float(body) if body != null else 1.0
+	return clampf(sqrt(maxf(scale_factor, 0.01)), BRUSH_SCALE_MIN, BRUSH_SCALE_MAX)
 
 
 # ---------------------------------------------------------------- per tick
