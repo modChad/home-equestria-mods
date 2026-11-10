@@ -1,7 +1,7 @@
 {
 	"id": "fishing",
 	"name": "Fishing",
-	"version": "0.2.0",
+	"version": "0.3.1",
 	"author": "modChad",
 	"description": "The river pier's fishing, made readable: a bigger float, splashes and ripples, a clear bite you can feel, five fish species that depend on the water, and a catch you can keep or release.",
 	"game_version": "0.3.0-maredev",

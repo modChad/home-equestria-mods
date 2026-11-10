@@ -184,7 +184,10 @@ func release(rod: Node) -> void:
 ## Taking the rod back to the rack (E/Q) keeps it.
 func on_input(event: InputEvent) -> void:
 	if is_instance_valid(bucket) and event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_E \
-			and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and _landed_rod() == null and bucket.desktop_take():
+			and not bucket._look_hit().is_empty():
+		print("[fishing] E at the bucket: fish=%d landed=%s mouse=%s" % [bucket.fish().size(), _landed_rod() != null, Input.mouse_mode])
+	if is_instance_valid(bucket) and event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_E \
+			and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and _landed_rod() == null and bucket.desktop_use():
 		get_viewport().set_input_as_handled(); return
 	var rod := _landed_rod()
 	if rod == null or not _desktop(rod): return
