@@ -84,7 +84,8 @@ func _helper(node_name: String, method: String, priority: int) -> Node:
 ## A tall pony (reach.gd) bows to him instead of walking in once their lips meet: the kiss pose's
 ## steps toward him (pony_affection.gd _steer) would walk her chest into him, her head over his.
 ## She still turns.
-func after_affection(_delta: float) -> void:
+func after_affection(delta: float) -> void:
+	_step_back(delta)
 	# Before their lips meet she may still step in to reach him; after, she holds her ground.
 	if not _met or not is_instance_valid(_reach) or not is_instance_valid(_mine) or _mine.get("_stepping") != true: return
 	var mare: Node3D = _mine.get("mare")
@@ -397,16 +398,43 @@ func _end_mine(why: String) -> void:
 	if is_instance_valid(_kisser):
 		_kisser.set("_active", _mine)
 		_kisser.call("_end_contact")
-	_mine = null
-	_reach_off()
+	_kiss_over()
 
 
 ## Her kiss ended by itself (the deep kiss runs out, or the kisser's button ended it).
 func _drop_mine() -> void:
 	if is_instance_valid(_kisser):
 		if _kisser.get("_active") == _mine or not is_instance_valid(_kisser.get("_active")): _kisser.call("_end_contact")
+	_kiss_over()
+
+
+## After a kiss she steps back out of his face (STEP_BACK_SECONDS at most): she ends it with her
+## head where his eyes are, and her neck and chest right behind it.
+const STEP_BACK_SECONDS := 1.5
+const STEP_BACK_SPEED := 0.35
+var _stepping_back: Node3D
+var _step_back_left := 0.0
+
+
+func _kiss_over() -> void:
+	var mare: Variant = _mine.get("mare") if is_instance_valid(_mine) else null
 	_mine = null
 	_reach_off()
+	if mare is Node3D and is_instance_valid(mare):
+		_stepping_back = mare
+		_step_back_left = STEP_BACK_SECONDS
+
+
+## Her step back, from after_affection (after her Affection, before her body moves).
+func _step_back(delta: float) -> void:
+	if not is_instance_valid(_stepping_back): return
+	_step_back_left -= delta
+	var busy: bool = is_instance_valid(_mine) or bool(_stepping_back.get("sleeping")) or (_stepping_back.has_method("is_held") and _stepping_back.is_held())
+	if busy or _step_back_left <= 0.0 or not _face_close(_stepping_back) or not _stepping_back.has_method("back_up"):
+		if _stepping_back.has_method("stop") and not busy: _stepping_back.stop()
+		_stepping_back = null
+		return
+	_stepping_back.back_up(STEP_BACK_SPEED * _scale_of(_stepping_back))
 
 
 # ---------------------------------------------------------------- desktop: bending down
@@ -430,6 +458,10 @@ func _desktop_bend() -> void:
 	var pony: Node3D = _coming
 	if pony == null and is_instance_valid(_mine): pony = _mine.get("mare")
 	if not is_instance_valid(pony):
+		# After a kiss her face is still right at his: standing straight up would take his eyes
+		# through her head (her horn, her forelock). He stays bent until there's room, which is
+		# as soon as either of them steps back.
+		if is_instance_valid(_bend_pony) and _face_close(_bend_pony): return
 		_unbend(body)
 		return
 	if _stand_eye < 0.0: _stand_eye = float(body.get("_stand_eye"))
@@ -442,6 +474,16 @@ func _desktop_bend() -> void:
 		_bend_lips = at.y - pony.global_position.y
 	var want := pony.global_position.y + _bend_lips - (body as Node3D).global_position.y + BEND_ABOVE
 	body.set("_stand_eye", clampf(want, _stand_eye * BEND_MIN, _stand_eye))
+
+
+## Her face within UNBEND_ROOM (flat, times her size) of his eyes.
+const UNBEND_ROOM := 0.45
+func _face_close(pony: Node3D) -> bool:
+	var camera: Variant = _kisser.get("camera")
+	if not camera is Camera3D or not pony.has_method("listen_point"): return false
+	var to: Vector3 = pony.listen_point() - (camera as Camera3D).global_position
+	to.y = 0.0
+	return to.length() < UNBEND_ROOM * _scale_of(pony)
 
 
 func _unbend(body: Variant) -> void:
@@ -489,6 +531,15 @@ func _hook_ponies() -> void:
 		var node: Node3D = pony
 		node.physical_reaction.connect(func(kind: String) -> void: _reaction(node, kind))
 		_hooked[pony] = true
+		# Her excitement as a build-up (feelings.gd), shown by her horn, wings or hooves.
+		if node.get_node_or_null("KissingFeelings") == null:
+			var feelings: Node = FEELINGS.new()
+			feelings.name = "KissingFeelings"
+			feelings.set("mare", node)
+			node.add_child(feelings)
+
+
+const FEELINGS := preload("res://mods/kissing/feelings.gd")
 
 
 func _reaction(pony: Node3D, kind: String) -> void:
@@ -565,6 +616,8 @@ func _exit_tree() -> void:
 		var sk: Variant = (pony as Node).get("skeleton")
 		if sk is Node and is_instance_valid(sk) and (sk as Node).get_node_or_null("KissingReach") != null:
 			(sk as Node).get_node("KissingReach").queue_free()
+		var feelings: Node = (pony as Node).get_node_or_null("KissingFeelings")
+		if feelings != null: feelings.queue_free()
 	if is_instance_valid(_kisser):
 		if _mine != null: _end_mine("mod off")
 		_unbend(_kisser.get("body"))
