@@ -74,11 +74,48 @@ const SUNFISH = {
 	"eye_t": .11, "eye_size": .055, "tail_fork": .12,
 }
 
+## Rare: golden carp. The carp's shape in gold, with a metallic shimmer.
+const GOLDEN_CARP = {
+	"id": "golden_carp", "length": 0.55,
+	"stations": [[0.0, .020, .018, -.012], [.04, .074, .060, -.010], [.12, .130, .095, .0], [.25, .172, .112, .010],
+		[.40, .182, .112, .012], [.55, .160, .096, .008], [.70, .108, .064, .004], [.80, .064, .037, .0], [.87, .044, .021, .0]],
+	"back": Color("c98a1c"), "band": Color("f2c13e"), "belly": Color("fff0b8"), "cheek": Color("f5b23a"),
+	"fin": Color("d9962a"), "fin_tip": Color("ffd970"),
+	"dorsals": [[.36, .70, .085, false]], "anal": [.67, .76, .065], "adipose": false,
+	"barbels": [[.012, .30, .055, .02]],
+	"spots": 0, "eye_t": .11, "eye_size": .036, "tail_fork": .42,
+	"shine": {"metallic": .55, "roughness": .28, "glow": Color("ffcc55"), "glow_energy": .15},
+}
+
+## Rare: moonlit catfish. The catfish's shape, silvery blue with a faint glow and pale speckles.
+const MOONLIT_CATFISH = {
+	"id": "moonlit_catfish", "length": 0.60,
+	"stations": [[0.0, .026, .040, -.010], [.04, .056, .084, -.010], [.12, .080, .108, -.006], [.25, .098, .104, .0],
+		[.40, .104, .090, .0], [.55, .094, .070, .0], [.70, .074, .050, .0], [.80, .054, .032, .0], [.88, .040, .018, .0]],
+	"back": Color("2b3b60"), "band": Color("7088b8"), "belly": Color("e6eefc"), "cheek": Color("7d93c2"),
+	"belly_v": -.15, "back_v": .2,
+	"fin": Color("33466e"), "fin_tip": Color("a9bde6"),
+	"dorsals": [[.29, .37, .10, false]], "anal": [.58, .83, .05], "adipose": true,
+	"barbels": [[.03, .78, .26, .03], [.0, .12, .10, .02], [.0, .28, .09, .02]],
+	"spots": 18, "spot": Color("dfe9ff"), "spot_size": .012,
+	"eye_t": .10, "eye_size": .026, "eye_angle": .27, "tail_fork": .06, "tail_round": true,
+	"shine": {"metallic": .25, "roughness": .35, "glow": Color("9fc4ff"), "glow_energy": .3},
+}
+
 static func build(spec: Dictionary) -> Node3D:
 	var root = Node3D.new(); root.name = "Fish_" + str(spec.id)
 	var L: float = spec.length
-	root.add_child(_body(spec, L))
-	root.add_child(_fins(spec, L))
+	var body = _body(spec, L); var fins = _fins(spec, L)
+	if spec.has("shine"):
+		# Rare fish: a metallic sheen and a soft glow, so they stand out at night and in the hand.
+		var sh: Dictionary = spec.shine
+		for mi in [body, fins]:
+			var m: StandardMaterial3D = mi.material_override
+			m.metallic = float(sh.get("metallic", 0.0)); m.roughness = float(sh.get("roughness", .5))
+			if sh.has("glow"):
+				m.emission_enabled = true; m.emission = sh.glow; m.emission_energy_multiplier = float(sh.get("glow_energy", .2))
+	root.add_child(body)
+	root.add_child(fins)
 	_eyes(root, spec, L)
 	_spots(root, spec, L)
 	_marks(root, spec, L)

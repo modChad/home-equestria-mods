@@ -1,10 +1,195 @@
 {
-	"_note": "Weights multiply: habitat x depth x time of day. Sizes in metres (min, max); the model's own length is scaled to the rolled size. Times: dawn 5-8, day 8-17, dusk 17-20, night 20-5.",
+	"_note": "Weights multiply: habitat x depth x time of day. Sizes in metres (min, max); the model's own length is scaled to the rolled size. Times: dawn 5-8, day 8-17, dusk 17-20, night 20-5. Rare fish replace their common kind now and then when their conditions hold (moon: lit fraction at least). Junk bites instead of a fish about 1 time in 12; 'keep' junk can be kept, the rest is tossed back.",
 	"species": {
-		"trout":   {"name": "Trout",   "habitat": {"canal": 0.1, "river": 1.0, "lake": 0.3}, "depth": [0.5, 3.0], "time": {"dawn": 1.6, "day": 0.7, "dusk": 1.6, "night": 0.3}, "size": [0.25, 0.55]},
-		"perch":   {"name": "Perch",   "habitat": {"canal": 0.6, "river": 0.6, "lake": 1.0}, "depth": [0.3, 2.5], "time": {"dawn": 1.0, "day": 1.2, "dusk": 1.0, "night": 0.3}, "size": [0.15, 0.40]},
-		"carp":    {"name": "Carp",    "habitat": {"canal": 1.0, "river": 0.4, "lake": 0.8}, "depth": [0.8, 4.0], "time": {"dawn": 1.2, "day": 0.8, "dusk": 1.2, "night": 0.8}, "size": [0.35, 0.80]},
-		"catfish": {"name": "Catfish", "habitat": {"canal": 0.5, "river": 1.0, "lake": 0.6}, "depth": [1.0, 5.0], "time": {"dawn": 0.6, "day": 0.2, "dusk": 1.0, "night": 2.0}, "size": [0.40, 0.95]},
-		"sunfish": {"name": "Sunfish", "habitat": {"canal": 1.0, "river": 0.2, "lake": 0.8}, "depth": [0.1, 1.5], "time": {"dawn": 0.8, "day": 1.4, "dusk": 0.8, "night": 0.2}, "size": [0.10, 0.25]}
+		"trout": {
+			"name": "Trout",
+			"habitat": {
+				"canal": 0.1,
+				"river": 1.0,
+				"lake": 0.3
+			},
+			"depth": [
+				0.5,
+				3.0
+			],
+			"time": {
+				"dawn": 1.6,
+				"day": 0.7,
+				"dusk": 1.6,
+				"night": 0.3
+			},
+			"size": [
+				0.25,
+				0.55
+			],
+			"hint": "Cold, fast rivers; bites at dawn and dusk."
+		},
+		"perch": {
+			"name": "Perch",
+			"habitat": {
+				"canal": 0.6,
+				"river": 0.6,
+				"lake": 1.0
+			},
+			"depth": [
+				0.3,
+				2.5
+			],
+			"time": {
+				"dawn": 1.0,
+				"day": 1.2,
+				"dusk": 1.0,
+				"night": 0.3
+			},
+			"size": [
+				0.15,
+				0.4
+			],
+			"hint": "Weedy lakes and slow water, by day."
+		},
+		"carp": {
+			"name": "Carp",
+			"habitat": {
+				"canal": 1.0,
+				"river": 0.4,
+				"lake": 0.8
+			},
+			"depth": [
+				0.8,
+				4.0
+			],
+			"time": {
+				"dawn": 1.2,
+				"day": 0.8,
+				"dusk": 1.2,
+				"night": 0.8
+			},
+			"size": [
+				0.35,
+				0.8
+			],
+			"hint": "Warm, still water with a muddy bottom."
+		},
+		"catfish": {
+			"name": "Catfish",
+			"habitat": {
+				"canal": 0.5,
+				"river": 1.0,
+				"lake": 0.6
+			},
+			"depth": [
+				1.0,
+				5.0
+			],
+			"time": {
+				"dawn": 0.6,
+				"day": 0.2,
+				"dusk": 1.0,
+				"night": 2.0
+			},
+			"size": [
+				0.4,
+				0.95
+			],
+			"hint": "Deep, slow water after dark."
+		},
+		"sunfish": {
+			"name": "Sunfish",
+			"habitat": {
+				"canal": 1.0,
+				"river": 0.2,
+				"lake": 0.8
+			},
+			"depth": [
+				0.1,
+				1.5
+			],
+			"time": {
+				"dawn": 0.8,
+				"day": 1.4,
+				"dusk": 0.8,
+				"night": 0.2
+			},
+			"size": [
+				0.1,
+				0.25
+			],
+			"hint": "Calm, weedy shallows on sunny days."
+		}
+	},
+	"rare": {
+		"golden_carp": {
+			"name": "Golden carp",
+			"of": "carp",
+			"chance": 0.0167,
+			"time": [
+				"dawn",
+				"day",
+				"dusk"
+			],
+			"habitat": [
+				"canal",
+				"lake"
+			],
+			"size": [
+				0.4,
+				0.75
+			],
+			"hint": "Said to glint in still water by day."
+		},
+		"moonlit_catfish": {
+			"name": "Moonlit catfish",
+			"of": "catfish",
+			"chance": 0.2,
+			"time": [
+				"night"
+			],
+			"moon": 0.8,
+			"size": [
+				0.5,
+				1.0
+			],
+			"hint": "Only bites on the brightest moonlit nights."
+		}
+	},
+	"junk": {
+		"chance": 0.083,
+		"items": {
+			"hat": {
+				"name": "Old sun hat",
+				"weight": 2.0,
+				"keep": true,
+				"base": 0.38,
+				"line": "Somepony lost their sun hat."
+			},
+			"can": {
+				"name": "Tin can",
+				"weight": 3.0,
+				"keep": true,
+				"base": 0.14,
+				"line": "A rusty tin can. Lovely."
+			},
+			"horseshoe": {
+				"name": "Lost horseshoe",
+				"weight": 1.5,
+				"keep": true,
+				"base": 0.13,
+				"line": "A lost horseshoe! Somepony will want this back."
+			},
+			"weed": {
+				"name": "Pond weed",
+				"weight": 3.0,
+				"keep": false,
+				"base": 0.28,
+				"line": "Just pond weed."
+			},
+			"stick": {
+				"name": "A stick",
+				"weight": 2.0,
+				"keep": false,
+				"base": 0.34,
+				"line": "A stick. Riveting."
+			}
+		}
 	}
 }

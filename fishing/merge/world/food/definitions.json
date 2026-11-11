@@ -83,5 +83,107 @@
 		],
 		"price_bits": 0,
 		"model": "../../../mods/fishing/models/sunfish"
+	},
+	"fish-golden_carp": {
+		"name": "Golden carp",
+		"category": "fish",
+		"stack": 16,
+		"consume": false,
+		"drink": false,
+		"container": "",
+		"description": "A rare golden carp that shimmers in the light. (Fishing mod)",
+		"mass": 1.6,
+		"size_m": [
+			0.11,
+			0.2,
+			0.66
+		],
+		"price_bits": 0,
+		"model": "../../../mods/fishing/models/golden_carp"
+	},
+	"fish-moonlit_catfish": {
+		"name": "Moonlit catfish",
+		"category": "fish",
+		"stack": 16,
+		"consume": false,
+		"drink": false,
+		"container": "",
+		"description": "A rare catfish with a faint silvery glow, only seen on bright moonlit nights. (Fishing mod)",
+		"mass": 2.0,
+		"size_m": [
+			0.12,
+			0.13,
+			0.72
+		],
+		"price_bits": 0,
+		"model": "../../../mods/fishing/models/moonlit_catfish"
+	},
+	"junk-hat": {
+		"name": "Old sun hat",
+		"category": "junk",
+		"stack": 8,
+		"consume": false,
+		"drink": false,
+		"container": "",
+		"description": "A soggy straw sun hat fished out of the water. It has ear holes. (Fishing mod)",
+		"mass": 0.15,
+		"size_m": [
+			0.38,
+			0.1,
+			0.38
+		],
+		"price_bits": 0,
+		"model": "../../../mods/fishing/models/hat"
+	},
+	"junk-can": {
+		"name": "Tin can",
+		"category": "junk",
+		"stack": 8,
+		"consume": false,
+		"drink": false,
+		"container": "",
+		"description": "A rusty old tin can, fished out of the water. (Fishing mod)",
+		"mass": 0.05,
+		"size_m": [
+			0.08,
+			0.14,
+			0.08
+		],
+		"price_bits": 0,
+		"model": "../../../mods/fishing/models/can"
+	},
+	"junk-horseshoe": {
+		"name": "Lost horseshoe",
+		"category": "junk",
+		"stack": 8,
+		"consume": false,
+		"drink": false,
+		"container": "",
+		"description": "An iron horseshoe somepony lost in the water. (Fishing mod)",
+		"mass": 0.3,
+		"size_m": [
+			0.13,
+			0.015,
+			0.13
+		],
+		"price_bits": 0,
+		"model": "../../../mods/fishing/models/horseshoe"
+	},
+	"fishing-log": {
+		"name": "Angler's Log",
+		"category": "tools",
+		"stack": 1,
+		"consume": false,
+		"drink": false,
+		"container": "",
+		"description": "Every fish you've caught, your best sizes and where you found them. Hold it and click to read. (Fishing mod)",
+		"mass": 0.4,
+		"size_m": [
+			0.17,
+			0.035,
+			0.23
+		],
+		"price_bits": 0,
+		"model": "../../../mods/fishing/models/log"
 	}
 }

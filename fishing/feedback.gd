@@ -242,9 +242,16 @@ func _show_fish(on: bool) -> void:
 	var id: String = line.fish.get("id", "trout")
 	if id != _fish_id or not is_instance_valid(_fish_view):
 		if is_instance_valid(_fish_view): _fish_view.queue_free()
-		var spec: Dictionary = (MODEL as Script).get_script_constant_map().get(id.to_upper(), MODEL.TROUT)
-		_fish_view = MODEL.build(spec); add_child(_fish_view); _fish_id = id
-		_fish_view.set_meta("base_length", float(spec.length))
+		if line.fish.get("junk", false):
+			# Junk: the Blender model (models/<id>.scn), at its own size.
+			var junk_path = "res://mods/fishing/models/%s.scn" % id
+			_fish_view = (load(junk_path) as PackedScene).instantiate() if ResourceLoader.exists(junk_path) else Node3D.new()
+			add_child(_fish_view); _fish_id = id
+			_fish_view.set_meta("base_length", float(line.fish.get("length", .2)))
+		else:
+			var spec: Dictionary = (MODEL as Script).get_script_constant_map().get(id.to_upper(), MODEL.TROUT)
+			_fish_view = MODEL.build(spec); add_child(_fish_view); _fish_id = id
+			_fish_view.set_meta("base_length", float(spec.length))
 	var k: float = float(line.fish.get("length", .4)) / float(_fish_view.get_meta("base_length"))
 	_fish_view.scale = Vector3.ONE * k
 	_fish_view.visible = true

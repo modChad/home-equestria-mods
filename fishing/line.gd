@@ -91,7 +91,7 @@ func tick(delta: float, tip: Vector3, _sweep: Callable) -> void:
 			var dip := sin(clamp(nibble, 0.0, .45) / .45 * PI) * .03 if nibble >= 0.0 else 0.0
 			bobber.y = water_y + .025 + sin(clock * 2.8) * .013 - dip
 			if clock >= wait_time:
-				fish = TABLE.pick(water_kind, water_depth, _hour(), rng)
+				fish = TABLE.pick(water_kind, water_depth, _hour(), rng, _moon())
 				if fish.is_empty():  # nothing lives here (the sea): try again later
 					clock = 0; wait_time = rng.randf_range(8.0, 15.0)
 				else:
@@ -108,7 +108,8 @@ func tick(delta: float, tip: Vector3, _sweep: Callable) -> void:
 	elif state == "hooked":
 		# The fish pulls in bursts; bigger fish pull harder. Cosy: it never breaks the line alone.
 		var size_t: float = fish.get("size_t", .3)
-		thrash = clampf(.35 + .65 * maxf(0.0, sin(clock * (2.2 + size_t)) * sin(clock * 5.3)), 0.0, 1.0) * (.5 + .5 * size_t)
+		if fish.get("junk", false): thrash = .04; size_t = 0.0  # junk just drags
+		else: thrash = clampf(.35 + .65 * maxf(0.0, sin(clock * (2.2 + size_t)) * sin(clock * 5.3)), 0.0, 1.0) * (.5 + .5 * size_t)
 		if not _lifting:
 			bobber.y = water_y + .01 + sin(clock * 14) * .02 * (1.0 + thrash)
 		var distance: float = tip.distance_to(bobber)
@@ -172,6 +173,12 @@ func _hour() -> float:
 		var tod: Node = rod.get_tree().root.get_node_or_null("TimeOfDay")
 		if tod != null and "hours" in tod: return float(tod.hours)
 	return 12.0
+
+func _moon() -> float:
+	if is_instance_valid(rod) and rod.is_inside_tree():
+		var tod: Node = rod.get_tree().root.get_node_or_null("TimeOfDay")
+		if tod != null and tod.has_method("moon_lit_fraction"): return float(tod.moon_lit_fraction())
+	return 0.0
 
 func _set_state(next: String) -> void:
 	if next == state: return

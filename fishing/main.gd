@@ -1,5 +1,6 @@
 extends Node
-## Fishing: makes the river pier's fishing readable and adds five species.
+## Fishing: makes the river pier's fishing readable and adds species, junk, rare fish, a live-well
+## bucket, the Angler's Log, and ponies who notice what you catch.
 ## Each pier rod (world/minigames/fishing/fishing_rod.gd) gets the mod's line (line.gd: aimed
 ## casts, nibbles, a longer bite, species by habitat) and a feedback node (feedback.gd: float,
 ## splashes, ripples, rod bend, desktop prompts, VR haptics). The game's rod, hands and
@@ -10,6 +11,15 @@ const HUD := preload("res://mods/fishing/hud.gd")
 const CATCH_TABLE := preload("res://mods/fishing/catch_table.gd")
 const BUCKET := preload("res://mods/fishing/bucket.gd")
 const STATIONS := preload("res://world/mechanics/stations/stations.gd")
+const LOG := preload("res://mods/fishing/angler_log.gd")
+const REACT := preload("res://mods/fishing/reactions.gd")
+const GIFTS := preload("res://world/mechanics/gifts/gifts.gd")
+## Ponies who like fish (so the favour system has them ask for it): Big Mac and Spike, and
+## Fluttershy for her animals (her dislike of fish is lifted while the mod is on).
+const FISH_FANS := ["big_mcintosh", "spike", "fluttershy"]
+var angler_log: Node3D
+var reactions: RefCounted
+var _taste_undo: Dictionary = {}
 var bucket: Node3D
 var _local_state: Dictionary = {}   # stands in for the world save where there's no game (labs)
 var _catch_serial := 0
@@ -21,12 +31,29 @@ var _vr_trigger: Dictionary = {}
 
 func _ready() -> void:
 	hud = HUD.new(); hud.name = "FishingHud"; add_child(hud)
+	reactions = REACT.new(); reactions.host = self
+	_patch_tastes()
 	Mods.on_node(_is_pier_rod, _adopt)
 	_watch = Node.new(); _watch.name = "FishingInput"
 	var script := GDScript.new()
 	script.source_code = "extends Node\nvar mod: Node\nfunc _input(e: InputEvent) -> void:\n\tif is_instance_valid(mod): mod.on_input(e)\nfunc _physics_process(_d: float) -> void:\n\tif is_instance_valid(mod): mod.on_physics()\n"
 	script.reload(); _watch.set_script(script); _watch.set("mod", self)
 	get_tree().root.add_child.call_deferred(_watch)
+
+func _patch_tastes() -> void:
+	var table: Dictionary = GIFTS.tastes()
+	for pony: String in FISH_FANS:
+		if not table.has(pony): table[pony] = {"love": [], "like": [], "dislike": [], "signature": []}
+		var row: Dictionary = table[pony]
+		_taste_undo[pony] = {"like": (row.like as Array).duplicate(), "dislike": (row.dislike as Array).duplicate()}
+		if not "fish" in row.like: row.like.append("fish")
+		row.dislike.erase("fish")
+
+func _unpatch_tastes() -> void:
+	var table: Dictionary = GIFTS.tastes()
+	for pony: String in _taste_undo:
+		if not table.has(pony): continue
+		table[pony].like.assign(_taste_undo[pony].like); table[pony].dislike.assign(_taste_undo[pony].dislike)
 
 ## The pier's rods: children of RiverDock with a line and a cast().
 func _is_pier_rod(node: Node) -> bool:
@@ -62,8 +89,10 @@ func _caught(at: Vector3, rod: Node) -> void:
 		if rod.has_method("_landed"): rod.call("_landed", at)
 		return
 	if str(rod.holder) != "player":
-		# A pony's catch: into the live well, with the game's fishing bookkeeping.
+		# A pony's catch: into the live well, with the game's fishing bookkeeping. Junk goes back.
 		var theirs: Dictionary = line.fish.duplicate()
+		reactions.pony_caught(rod, theirs)
+		if theirs.get("junk", false): return
 		_bookkeeping(rod, theirs)
 		_ensure_bucket(rod)
 		if is_instance_valid(bucket) and not bucket.full(): bucket.add(theirs.id, theirs.length)
@@ -71,12 +100,21 @@ func _caught(at: Vector3, rod: Node) -> void:
 		return
 	var fish: Dictionary = line.fish.duplicate()
 	line.land(fish)
+	var fb: Node = _rods[rod].feedback
+	if fish.get("junk", false):
+		# Junk: a joke line; the keepers can be kept (they land on the pier), the rest go back.
+		var keys := "[LMB] Keep   ·   [RMB] Toss back" if fish.get("keep", false) else "[LMB] / [RMB] Toss back"
+		if _desktop(rod): hud.card(fish.name, 0.0, str(fish.get("line", "")), keys, " ")
+		else: fb.show_card3d("%s\n%s\n%s" % [fish.name, fish.get("line", ""), "Trigger: keep  ·  other trigger: toss" if fish.get("keep", false) else "Either trigger: toss back"])
+		reactions.player_caught(rod, fish, "")
+		return
 	_bookkeeping(rod, fish)
 	var note := _best_note(fish)
-	var fb: Node = _rods[rod].feedback
-	if note != "": preload("res://mods/fishing/sounds.gd").play_ui(self, "jingle_best" if note.contains("best") else "jingle", -6.0)
+	if fish.get("rare", false): note = "Rare!  " + note if note != "" else "Rare!"
+	if note != "": preload("res://mods/fishing/sounds.gd").play_ui(self, "jingle_best" if note.contains("best") or fish.get("rare", false) else "jingle", -6.0)
 	if _desktop(rod): hud.card(fish.name, fish.length, note)
 	else: fb.show_card3d("%s  %d cm%s\nTrigger: keep  ·  other trigger: release" % [fish.name, roundi(fish.length * 100.0), ("\n" + note) if note != "" else ""])
+	reactions.player_caught(rod, fish, note)
 
 func _best_note(fish: Dictionary) -> String:
 	var bests: Dictionary = _bests()
@@ -95,8 +133,18 @@ func _bests() -> Dictionary:
 	if not st.get("best") is Dictionary: st["best"] = {}
 	return st.best
 
-func _record(fish: Dictionary, kept: bool) -> void:
+func _record(fish: Dictionary, kept: bool, rod: Node = null) -> void:
 	var st: Dictionary = state()
+	if fish.get("junk", false):
+		if not st.get("junk") is Dictionary: st["junk"] = {}
+		st.junk[fish.id] = int(st.junk.get(fish.id, 0)) + 1
+		if Mods.has_method("save_changed"): Mods.save_changed()
+		return
+	if not st.get("first") is Dictionary: st["first"] = {}
+	if not st.first.has(fish.id):
+		var tod: Node = get_tree().root.get_node_or_null("TimeOfDay")
+		st.first[fish.id] = {"day": int(tod.get("day")) if tod != null else 0, "hour": snappedf(float(tod.get("hours")) if tod != null else 12.0, .01),
+			"water": str(rod.line.water_kind) if is_instance_valid(rod) else "water", "length": snappedf(fish.length, .001)}
 	var bests := _bests()
 	if fish.length > float(bests.get(fish.id, 0.0)): bests[fish.id] = snappedf(fish.length, .001)
 	if not st.get("count") is Dictionary: st["count"] = {}
@@ -108,7 +156,10 @@ func _record(fish: Dictionary, kept: bool) -> void:
 func _dropped(fish: Dictionary, rod: Node) -> void:
 	if _busy.has(rod): return  # keep/release already under way; its own callback finishes it
 	hud.clear_card()
-	_record(fish, true)
+	_record(fish, true, rod)
+	if fish.get("junk", false):
+		if fish.get("keep", false): _drop_junk(rod, fish)
+		return
 	_put_in_bucket(rod, fish)
 
 ## The game's own records of a catch (fishing_runtime.gd _landed): the station's "caught" fact,
@@ -139,6 +190,23 @@ func _ensure_bucket(rod: Node) -> void:
 	if dock.get("bucket") == null: return
 	bucket = BUCKET.new(); bucket.name = "FishingLiveWell"; dock.add_child(bucket)
 	bucket.setup(dock, _inventory(rod), state)
+	_add_landmarks(dock)
+	if not is_instance_valid(angler_log):
+		angler_log = LOG.new(); angler_log.name = "AnglersLog"; dock.add_child(angler_log)
+		angler_log.setup(dock, _inventory(rod), state)
+
+## Named points ponies can see and walk to (pony_awareness.gd and place_directory.gd read the
+## "ai_observable" group). The game names only the deck's centre, out over the water, where a
+## pony on the bank often can't see it; these sit a little above the pier, rack and pail.
+const LANDMARKS := [["fishing_pier", "River fishing pier", Vector3(0, 1.2, 1.0)], ["fishing_rod_rack", "Rack of fishing rods", Vector3(-.62, 1.1, 1.57)],
+	["fishing_catch_pail", "Catch pail", Vector3(1.27, .8, -.15)]]
+var _landmarks: Array[Node3D] = []
+func _add_landmarks(dock: Node3D) -> void:
+	if not _landmarks.is_empty(): return
+	for row in LANDMARKS:
+		var m := Marker3D.new(); m.name = "AI_" + str(row[0]); m.position = row[2]
+		m.set_meta("ai_id", str(row[0])); m.set_meta("ai_label", str(row[1]))
+		dock.add_child(m); m.add_to_group("ai_observable"); _landmarks.append(m)
 
 func _put_in_bucket(rod: Node, fish: Dictionary) -> void:
 	_ensure_bucket(rod)
@@ -153,14 +221,35 @@ func _put_in_bucket(rod: Node, fish: Dictionary) -> void:
 	if body == null and is_instance_valid(inv): print("[fishing] couldn't place ", id, " in the bucket (too many loose items?)")
 	if is_instance_valid(body): preload("res://world/audio/interaction_sounds.gd").play_at(body, "prop_fish_land")
 
+## Kept junk lands on the pier beside the bucket as an item.
+func _drop_junk(rod: Node, fish: Dictionary) -> void:
+	var dock: Node = rod.get_parent()
+	var at: Vector3 = (dock.landing_point() if dock.has_method("landing_point") else rod.global_position) + dock.global_basis * Vector3(-.45, -.2, .1)
+	var inv: Node = _inventory(rod)
+	var id := "food:junk-" + str(fish.id)
+	var body: Node = inv.spawn_owned_drop(id, Transform3D(Basis(Vector3.UP, randf() * TAU), at)) if is_instance_valid(inv) and inv.has_method("spawn_owned_drop") else null
+	if body == null and is_instance_valid(inv): print("[fishing] couldn't place ", id, " on the pier")
+	if is_instance_valid(body): preload("res://world/audio/interaction_sounds.gd").play_at(body, "impact")
+
 func keep(rod: Node) -> void:
 	if _busy.has(rod) or str(rod.line.state) != "landed": return
 	var fish: Dictionary = rod.line.fish.duplicate()
+	if fish.get("junk", false) and not fish.get("keep", false): release(rod); return
+	if fish.get("junk", false):
+		var dock_j: Node = rod.get_parent()
+		var spot: Vector3 = (dock_j.landing_point() if dock_j.has_method("landing_point") else rod.global_position) + dock_j.global_basis * Vector3(-.45, -.2, .1)
+		_busy[rod] = true; hud.clear_card()
+		_record(fish, true, rod)
+		rod.line.fish = {}
+		_rods[rod].feedback.fly_fish(spot, .55, false, func() -> void:
+			_busy.erase(rod); _drop_junk(rod, fish)
+			if str(rod.line.state) == "landed": rod.line.reset(rod.tip()))
+		return
 	var dock: Node = rod.get_parent()
 	var into: Vector3 = dock.landing_point() if dock.has_method("landing_point") else rod.global_position
 	if is_instance_valid(bucket): into = bucket.global_position + Vector3.UP * bucket.water_h
 	_busy[rod] = true; hud.clear_card()
-	_record(fish, true)
+	_record(fish, true, rod)
 	rod.line.fish = {}  # handed over: a reset now won't count as dropping it
 	_rods[rod].feedback.fly_fish(into, .55, false, func() -> void:
 		_busy.erase(rod)
@@ -174,7 +263,7 @@ func release(rod: Node) -> void:
 	var out: Vector3 = rod.tip() + (dock.water_direction() if dock.has_method("water_direction") else -rod.global_basis.z) * 2.5
 	out.y = rod.line.water_y
 	_busy[rod] = true; hud.clear_card()
-	_record(fish, false)
+	_record(fish, false, rod)
 	rod.line.fish = {}
 	_rods[rod].feedback.fly_fish(out, .7, true, func() -> void:
 		_busy.erase(rod)
@@ -183,6 +272,11 @@ func release(rod: Node) -> void:
 ## Desktop: left click keeps, right click releases, while a catch hangs on the player's rod.
 ## Taking the rod back to the rack (E/Q) keeps it.
 func on_input(event: InputEvent) -> void:
+	if is_instance_valid(angler_log) and _landed_rod() == null:
+		if angler_log.on_input(event): get_viewport().set_input_as_handled(); return
+		if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_E \
+				and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and angler_log.desktop_take():
+			get_viewport().set_input_as_handled(); return
 	if is_instance_valid(bucket) and event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_E \
 			and not bucket._look_hit().is_empty():
 		print("[fishing] E at the bucket: fish=%d landed=%s mouse=%s" % [bucket.fish().size(), _landed_rod() != null, Input.mouse_mode])
@@ -212,7 +306,10 @@ func on_physics() -> void:
 			if is_instance_valid(r) and is_instance_valid(_inventory(r)): _ensure_bucket(r); break
 	elif bucket.inventory == null:
 		for r: Node in _rods:
-			if is_instance_valid(r): bucket.inventory = _inventory(r); break
+			if is_instance_valid(r):
+				bucket.inventory = _inventory(r)
+				if is_instance_valid(angler_log): angler_log.inventory = bucket.inventory
+				break
 	var rod := _landed_rod()
 	if rod == null or _desktop(rod): return
 	var hands := _hands_for(rod); var inv := _inventory(rod)
@@ -239,6 +336,9 @@ func _inventory(rod: Node) -> Node:
 	return hands.get("inventory") if is_instance_valid(hands) else null
 
 func _exit_tree() -> void:
+	_unpatch_tastes()
+	if is_instance_valid(angler_log): angler_log.queue_free()
+	for m in _landmarks: if is_instance_valid(m): m.queue_free()
 	if is_instance_valid(_watch): _watch.queue_free()
 	if is_instance_valid(bucket): bucket.queue_free()
 	for rod: Node in _rods.keys():

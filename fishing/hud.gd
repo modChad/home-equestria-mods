@@ -41,11 +41,12 @@ func _plain(size: int, colour: Color) -> Label:
 	return l
 
 ## The catch card: species, size, a best-ever note, and what to press.
-func card(fish_name: String, length_m: float, best_note: String) -> void:
+func card(fish_name: String, length_m: float, best_note: String, keys := "[LMB] Keep   ·   [RMB] Release", size_text := "") -> void:
 	_card_name.text = fish_name
-	_card_size.text = "%d cm" % roundi(length_m * 100.0)
+	_card_size.text = size_text if size_text != "" else "%d cm" % roundi(length_m * 100.0)
+	_card_size.visible = _card_size.text != ""
 	_card_best.text = best_note; _card_best.visible = not best_note.is_empty()
-	_card_keys.text = "[LMB] Keep   ·   [RMB] Release"
+	_card_keys.text = keys
 	_card.visible = true; _card_time = 0.0
 
 func clear_card() -> void:

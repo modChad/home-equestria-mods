@@ -12,8 +12,13 @@ const FONT = preload("res://world/ui/fonts/PonyvilleMedium.ttf")
 var dock: Node3D
 var inventory: Node
 var state_source: Callable          # returns the mod's per-world Dictionary
-var radius = .17                   # inner radius at the water line (measured in setup)
-var water_h = .27                  # water height above the bucket's origin
+## The mod's own hollow wooden pail (models/pail.scn, made in Blender: tools/_fish_lab/pail.blend)
+## replaces the game's closed bucket model; the pier's collision ring stays as it is.
+const PAIL := "res://mods/fishing/models/pail.scn"
+var radius = .148                  # inside the staves at the water line
+var water_h = .25                  # water surface above the pail's base (about two thirds up)
+var _game_bucket: Node3D
+var _pail: Node3D
 var _water: MeshInstance3D
 var _swimmers: Array = []           # [{node, phase, ring, speed, depth}]
 var _list: Label3D
@@ -27,15 +32,19 @@ func setup(d: Node3D, inv: Node, source: Callable) -> void:
 	add_to_group("interaction_hint_sources"); add_to_group("grab_providers")
 	var bucket: Node3D = dock.get("bucket")
 	if is_instance_valid(bucket):
-		_measure(bucket)
-		global_transform = Transform3D(Basis(), bucket.global_position)
-	_water = MeshInstance3D.new(); var disc = CylinderMesh.new(); disc.top_radius = radius; disc.bottom_radius = radius * .96; disc.height = .01
+		global_transform = Transform3D(bucket.global_basis.orthonormalized(), bucket.global_position)
+		if ResourceLoader.exists(PAIL):
+			_game_bucket = bucket; bucket.visible = false
+			_pail = (load(PAIL) as PackedScene).instantiate(); _pail.name = "Pail"; add_child(_pail)
+		else:
+			_measure(bucket)
+	_water = MeshInstance3D.new(); var disc = CylinderMesh.new(); disc.top_radius = radius + .004; disc.bottom_radius = radius; disc.height = .01
 	disc.radial_segments = 24; _water.mesh = disc
 	var wm = StandardMaterial3D.new(); wm.albedo_color = Color(.35, .6, .7, .28); wm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	wm.roughness = .25; wm.metallic_specular = .3; _water.material_override = wm; _water.position.y = water_h; add_child(_water)
 	_list = Label3D.new(); _list.font = FONT; _list.font_size = 44; _list.pixel_size = .0008; _list.modulate = Color("fff3d6")
 	_list.outline_modulate = Color("3a2616"); _list.outline_size = 12; _list.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_list.position.y = water_h + .3; _list.visible = false; add_child(_list)
+	_list.position.y = water_h + .5; _list.visible = false; add_child(_list)
 	refresh()
 
 ## The bucket model's inside, from its mesh bounds (falls back to the dock's collision ring).
@@ -78,10 +87,10 @@ func refresh() -> void:
 		var view: Node3D = MODEL.build(spec)
 		# Shrunk to fit the bucket, keeping big ones bigger than small ones.
 		var fit: float = clampf(float(f.length), .1, .95)
-		var k: float = (radius * (1.15 + .55 * inverse_lerp(.1, .95, fit))) / float(spec.length)
+		var k: float = (radius * (.95 + .4 * inverse_lerp(.1, .95, fit))) / float(spec.length)
 		view.scale = Vector3.ONE * k
 		add_child(view)
-		_swimmers.append({"node": view, "phase": TAU * i / maxf(1, shown.size()), "ring": radius * randf_range(.35, .6),
+		_swimmers.append({"node": view, "phase": TAU * i / maxf(1, shown.size()), "ring": radius * randf_range(.3, .5),
 			"speed": randf_range(.35, .6) * (1 if i % 2 == 0 else -1), "depth": randf_range(.012, .035)})
 	_water.visible = true
 
@@ -116,6 +125,10 @@ func _list_text() -> String:
 static func _name(id: String) -> String:
 	var table: Dictionary = preload("res://mods/fishing/catch_table.gd").species()
 	return str(table.get(id, {}).get("name", id.capitalize()))
+
+## Switched off: the game's own bucket comes back.
+func _exit_tree() -> void:
+	if is_instance_valid(_game_bucket): _game_bucket.visible = true
 
 ## Desktop: the game's hint line asks this while you look about. Looking at the bucket shows the list.
 func interaction_hint() -> Dictionary:
