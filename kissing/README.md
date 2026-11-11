@@ -1,6 +1,6 @@
 # Kissing
 
-- **Version:** 1.2.7
+- **Version:** 1.2.8
 - **Made for:** Home: Equestria 0.3.0-maredev
 - **Works on:** desktop (hold K) and VR (lean in)
 
@@ -56,9 +56,13 @@ When you bend down to her, your body now crouches with your view instead of stay
 
 She tilts her head to one side as she kisses you (a random side each kiss), so her forehead passes beside your eyes instead of into them.
 
+## Horn Glow (1.2.8)
+
+With the Horn Glow mod, a unicorn's build-up lights the glow around her horn (and its hum) instead of the round disc of light.
+
 ## Install
 
-Put `kissing-v1.2.7.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
+Put `kissing-v1.2.8.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
 
 ## Build from source
 

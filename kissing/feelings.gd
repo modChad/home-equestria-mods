@@ -150,6 +150,13 @@ func _horn(delta: float) -> void:
 	if level <= 0.001:
 		_horn_off()
 		return
+	# With the Horn Glow mod the build-up lights its glow around the horn (and its hum) instead.
+	if magic.has_method("glow_from_outside"):
+		_horn_off()
+		var e := level * level * (3.0 - 2.0 * level)
+		var p := 1.0 + PULSE_DEPTH * sin(_clock * TAU * lerpf(PULSE_RATE.x, PULSE_RATE.y, level))
+		magic.call("glow_from_outside", clampf(lerpf(GLOW_MIN, 1.0, e) * p, 0.0, 1.0))
+		return
 	if not _horn_on(magic): return
 	var skeleton: Skeleton3D = magic.get("_skeleton")
 	var bone: int = magic.get("_bone")

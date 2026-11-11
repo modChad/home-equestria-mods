@@ -1,0 +1,9 @@
+{
+	"id": "horn_glow",
+	"name": "Horn Glow",
+	"version": "1.1.0",
+	"author": "modChad",
+	"description": "A unicorn's horn magic glows around the horn itself, following its shape and flickering at the tip, with a gentle hum instead of the cast sparkle sound.",
+	"game_version": "0.3.0-maredev",
+	"extends": ["res://mods/horn_glow/magic.gd"]
+}

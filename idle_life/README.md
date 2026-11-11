@@ -1,6 +1,6 @@
 # Idle Life
 
-- **Version:** 1.4.1
+- **Version:** 1.4.2
 - **By:** modChad
 - **Made for:** Home: Equestria 0.3.0-maredev
 - **Works on:** desktop and VR (nothing to press)
@@ -38,7 +38,7 @@ Each one plays on either side at random (the magic brush goes to whichever side 
 
 ## Install
 
-Put `idle-life-v1.4.1.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
+Put `idle-life-v1.4.2.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
 
 ## Things to know
 
@@ -54,6 +54,8 @@ Put `idle-life-v1.4.1.pck` in the game's `mods` folder and switch it on in **Set
 - Switching the mod off hands back anything it was holding (eyes, ears, mouth, wings, magic, gaze).
 
 ## Changes
+
+- **1.4.2:** With the Horn Glow mod, the sparks leaving her horn (magic sparkle, sun and moon) are quiet puffs of sparkles, with no round disc or cast sound. Her horn itself glows the Horn Glow way.
 
 - **1.4.1 (2026-11-11):** the scroll floats further out (45 cm ahead, a little higher and 10 cm to her left) and the inkwell further out from her, clear of Flowing Manes' fuller manes.
 - **1.4.0 (2026-11-10):** modelled tea sets, scroll rollers, quills and inkwells, one set for Celestia and one for Luna; the quill now dips into an inkwell before each line (writing takes 13.6 s); show-style parchment and writing.

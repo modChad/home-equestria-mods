@@ -476,7 +476,9 @@ func _sparkle(pony: Node3D, row: Dictionary, fade: float) -> void:
 		(pony.get_parent() if pony.get_parent() != null else pony).add_child(holder)
 		holder.global_position = tip
 		var colour: Color = magic.call("vivid", magic.get("color")) if magic.has_method("vivid") else magic.get("color")
-		UNICORN_MAGIC.burst(holder, Vector3.ZERO, colour, 2.4, 0.07 * size)
+		# With the Horn Glow mod: a quiet puff of sparkles, no disc or cast sound.
+		if magic.has_method("quiet_burst"): magic.call("quiet_burst", holder, colour, 2.4, 0.07 * size)
+		else: UNICORN_MAGIC.burst(holder, Vector3.ZERO, colour, 2.4, 0.07 * size)
 		sparks.append([holder, t, _rng.randf_range(-1.0, 1.0)])
 	var basis := pony.global_basis.orthonormalized()
 	for spark: Array in sparks:
@@ -1203,7 +1205,8 @@ func _sun(pony: Node3D, row: Dictionary, fade: float) -> void:
 		holder.name = "IdleLifeSpark"
 		(pony.get_parent() if pony.get_parent() != null else pony).add_child(holder)
 		holder.global_position = _horn_tip(pony, magic)
-		UNICORN_MAGIC.burst(holder, Vector3.ZERO, colour, 2.4, 0.1 * _size(pony))
+		if magic.has_method("quiet_burst"): magic.call("quiet_burst", holder, colour, 2.4, 0.1 * _size(pony))
+		else: UNICORN_MAGIC.burst(holder, Vector3.ZERO, colour, 2.4, 0.1 * _size(pony))
 		row.sparks = row.get("sparks", []) + [[holder, t, 0.0]]
 	for spark: Variant in row.get("sparks", []):
 		var holder: Variant = (spark as Array)[0]
