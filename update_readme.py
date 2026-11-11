@@ -29,8 +29,8 @@ def mods():
 
 def link_for(folder):
     for name in ("README.md", "Readme.md", "readme.md", "README.txt", "Readme.txt"):
-        if os.path.isfile(os.path.join(HERE, folder, name)): return folder + "/" + name
-    return folder + "/"
+        if os.path.isfile(os.path.join(HERE, folder, name)): return "../" + folder + "/" + name
+    return "../" + folder + "/"
 
 
 def main():
@@ -46,7 +46,7 @@ def main():
     changed = []
     for i, row in enumerate(rows):
         cells = row.split(" | ")
-        m = re.search(r"\]\(([^/)]+)/", cells[0])
+        m = re.search(r"\]\((?:\.\./)?([^/)]+)/", cells[0])
         folder = m.group(1) if m else None
         if folder not in found: continue
         seen.add(folder)
