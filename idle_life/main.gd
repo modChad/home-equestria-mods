@@ -45,6 +45,8 @@ const PREEN_SPREAD := 0.35
 ## Lab: force lying or sitting.
 static var LAB_REST := ""
 static var LAB_DEBUG := false
+## Lab only: the scroll's float spot (ahead, below, to her left) in metres at Canon size, to try distances.
+static var LAB_SCROLL := Vector3.ZERO
 
 ## pony -> {pose, idle, side, time, check, leaving, fade, wings, ears, lids, mouth, kicked}
 var _rows: Dictionary = {}
@@ -227,17 +229,25 @@ func play(pony: Node3D, idle: String, side := 0.0, forced := false) -> bool:
 			row.near_mesh = near.mesh
 			row.without = without
 		elif idle in ["scroll", "write"]:
-			var scroll := SCROLL.make(idle == "write")
+			var scroll := SCROLL.make(idle == "write", "luna" if _moon_pony(pony) else "celestia")
 			holder.add_child(scroll)
 			scroll.visible = false
 			row.scroll = scroll
 			if idle == "write":
-				row.quill = SCROLL.make_quill()
+				var kit := "luna" if _moon_pony(pony) else "celestia"
+				row.quill = SCROLL.make_quill(kit)
 				holder.add_child(row.quill)
 				(row.quill as Node3D).visible = false
+				var inkwell := SCROLL.make_inkwell(kit)
+				if inkwell != null:
+					holder.add_child(inkwell)
+					inkwell.visible = false
+					row.inkwell = inkwell
 		else:
-			row.cup = TEA.make_cup()
-			row.saucer = TEA.make_saucer()
+			# Her own tea set: Luna's for Luna, Celestia's otherwise.
+			var set := "luna" if _moon_pony(pony) else "celestia"
+			row.cup = TEA.make_cup(set)
+			row.saucer = TEA.make_saucer(set)
 			for thing: Node3D in [row.cup, row.saucer]:
 				holder.add_child(thing)
 				thing.visible = false
@@ -727,6 +737,9 @@ func _release_face(pony: Node3D, row: Dictionary) -> void:
 
 ## How big the scroll is (times scroll.gd's size, at size 1).
 const SCROLL_SCALE := 1.3
+## Where the scroll floats, from her head as she starts (metres at Canon size): ahead, below, to her
+## left. Clear of Flowing Manes' fuller manes.
+const SCROLL_AT := Vector3(0.45, 0.06, 0.10)
 ## How far across each row her gaze goes (of the writing's width): her head follows her gaze,
 ## so this is kept small for a slight sway rather than a full turn per line.
 const SCROLL_SWAY := 0.3
@@ -751,7 +764,8 @@ func _move_scroll(pony: Node3D, row: Dictionary, fade: float) -> void:
 		forward.y = 0.0
 		forward = forward.normalized() if not forward.is_zero_approx() else -pony.global_basis.z.normalized()
 		row.forward = forward
-		row.anchor = head + forward * 0.34 * size + Vector3.DOWN * 0.10 * size
+		var at := LAB_SCROLL if LAB_SCROLL != Vector3.ZERO else SCROLL_AT
+		row.anchor = head + (forward * at.x + Vector3.DOWN * at.y + Vector3.UP.cross(forward) * at.z) * size
 	var forward: Vector3 = row.forward
 	var colour: Color = magic.call("vivid", magic.get("color")) if magic.has_method("vivid") else magic.get("color")
 	var writes := str(row.idle) == "write"
@@ -766,6 +780,10 @@ func _move_scroll(pony: Node3D, row: Dictionary, fade: float) -> void:
 		magic.call("cast", 0.8)
 		var aura: Node3D = MAGIC_AURA.create(scroll, magic.get("color"), 1.0, 0.24 * size)
 		row.glows = [aura] if aura != null else []
+		if is_instance_valid(row.get("inkwell")):
+			(row.inkwell as Node3D).visible = true
+			var well_aura: Node3D = MAGIC_AURA.create(row.inkwell, magic.get("color"), 1.0, 0.06 * size)
+			if well_aura != null: (row.glows as Array).append(well_aura)
 		if is_instance_valid(row.get("quill")):
 			(row.quill as Node3D).visible = true
 			var quill_aura: Node3D = MAGIC_AURA.create(row.quill, magic.get("color"), 1.0, 0.07 * size)
@@ -813,12 +831,15 @@ func _move_scroll(pony: Node3D, row: Dictionary, fade: float) -> void:
 
 ## Where the quill rests between rows and before and after writing, in the scroll's space: up
 ## beside its right edge, a little toward her.
-const QUILL_REST := Vector3(0.15, 0.06, 0.04)
+const QUILL_REST := Vector3(-0.15, 0.06, 0.04)
 ## The quill's slant, in the scroll's space: up, toward her and out to the right, like a pen in
 ## a hand.
-const QUILL_SLANT := Vector3(0.35, 0.75, 0.55)
+const QUILL_SLANT := Vector3(-0.35, 0.75, 0.55)
 ## The quill's size against the scroll's.
 const QUILL_SCALE := 1.4
+## Where the inkwell floats, in the scroll's space: beside its lower left edge (her left, clear
+## of a mane falling on her right), toward her.
+const INKWELL_AT := Vector3(-0.22, -0.11, 0.05)
 
 ## The writing idle's quill: to the start of each row, along it as the ink appears behind its
 ## nib (a little up-and-down scribble), lifted between rows, then back to rest. Her eyes follow
@@ -827,20 +848,38 @@ func _move_quill(pony: Node3D, row: Dictionary, scroll: Node3D, t: float, scale:
 	var quill: Variant = row.get("quill")
 	if not quill is Node3D or not is_instance_valid(quill): return
 	SCROLL.set_written(scroll, IDLES.write_progress(t))
+	# The inkwell: upright beside the scroll's lower right, a little toward her.
+	var well: Variant = row.get("inkwell")
+	var mouth := Vector3.INF
+	var sb0 := scroll.global_basis.orthonormalized()
+	if well is Node3D and is_instance_valid(well):
+		var flat_z := Vector3(sb0.z.x, 0.0, sb0.z.z).normalized()
+		var flat_x := Vector3.UP.cross(flat_z).normalized()
+		(well as Node3D).global_basis = Basis(flat_x, Vector3.UP, flat_z).scaled(Vector3.ONE * scale)
+		(well as Node3D).global_position = scroll.global_transform * INKWELL_AT
+		mouth = (well as Node3D).global_position + Vector3.UP * SCROLL.INKWELL_MOUTH * scale
 	var tip := QUILL_REST
+	var want := Vector3.INF
 	var rows: Array = IDLES.WRITE_LINES
-	if t > rows[0].x - 0.6 and t < rows[rows.size() - 1].y:
+	var dips: Array = IDLES.WRITE_DIPS
+	if t > dips[0].x - 0.4 and t < rows[rows.size() - 1].y:
 		for i in rows.size():
+			var dip: Vector2 = dips[i]
 			var span: Vector2 = rows[i]
 			if t < span.x:
 				tip = SCROLL.ink_spot(i, 0.0) + Vector3(0.0, 0.0, 0.02)
+				# Into the inkwell first: above its mouth, down into the ink, up again, then to the row.
+				if mouth.is_finite() and t >= dip.x - 0.4 and t < dip.y:
+					var u := (t - dip.x) / (dip.y - dip.x)
+					var depth := SCROLL.INKWELL_MOUTH - SCROLL.INKWELL_DIP
+					want = mouth + Vector3.UP * (0.03 * scale if u < 0.3 or u > 0.65 else -depth * scale)
 				break
 			if t <= span.y:
 				var along := (t - span.x) / (span.y - span.x)
 				tip = SCROLL.ink_spot(i, along) + Vector3(0.0, sin(t * 38.0) * 0.0025, 0.004)
 				break
 	var step := 1.0 - exp(-get_physics_process_delta_time() / 0.05)
-	var want := scroll.global_transform * tip
+	if not want.is_finite(): want = scroll.global_transform * tip
 	var now: Vector3 = (quill as Node3D).get_meta("idle_life_at", want)
 	now = now.lerp(want, step)
 	(quill as Node3D).set_meta("idle_life_at", now)
@@ -866,7 +905,7 @@ func _drop_scroll(pony: Variant, row: Dictionary) -> void:
 	if not row.has("scroll") and not row.has("cup") and not row.has("loose"): return
 	if row.has("glows"): UNICORN_MAGIC.unglow_object(row.glows)
 	row.erase("glows")
-	for key: String in ["scroll", "quill", "cup", "saucer", "loose"]:
+	for key: String in ["scroll", "quill", "inkwell", "cup", "saucer", "loose"]:
 		if is_instance_valid(row.get(key)): (row[key] as Node).queue_free()
 	if is_instance_valid(pony):
 		if pony.get("action_gaze_target") == row.get("gaze_eye") and pony.has_method("set_action_gaze"):
@@ -874,7 +913,7 @@ func _drop_scroll(pony: Variant, row: Dictionary) -> void:
 		var magic: Variant = pony.get("magic")
 		if bool(row.get("lit", false)) and magic != null and is_instance_valid(magic): magic.call("hold", false)
 	if is_instance_valid(row.get("gaze_eye")): (row.gaze_eye as Node).queue_free()
-	row.erase("scroll"); row.erase("loose"); row.erase("quill"); row.erase("cup"); row.erase("saucer"); row.erase("gaze_eye"); row.lit = false
+	row.erase("scroll"); row.erase("loose"); row.erase("quill"); row.erase("inkwell"); row.erase("cup"); row.erase("saucer"); row.erase("gaze_eye"); row.lit = false
 
 
 # ---------------------------------------------------------------- tea

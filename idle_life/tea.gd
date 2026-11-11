@@ -1,10 +1,15 @@
 extends RefCounted
-## The tea idle's cup and saucer, made here (no model files): white porcelain with gold rims, tea
-## in the cup. The cup's origin is the middle of its base; its handle is on its +X side.
+## The tea idle's cup and saucer. Each princess has her own set, modelled in Blender
+## (renders/idle_life/tea_sets_v2.blend) and exported to models/tea_<set>_cup.glb and
+## tea_<set>_saucer.glb: Celestia's white with gold and a sun, Luna's night blue with silver and
+## a crescent, about 440 triangles a set. Without a set (or its files) the plain white-and-gold
+## pair below is made in code. The cup's origin is the middle of its base; its handle is on its
+## +X side, the motif on its -X side.
 
 ## Sizes at an ordinary mare's size (metres).
-const CUP_HEIGHT := 0.05
-const CUP_TOP := 0.034
+const CUP_HEIGHT := 0.0505
+const CUP_TOP := 0.035
+const MODELS := "res://mods/idle_life/models/tea_%s_%s.glb"
 const CUP_FOOT := 0.024
 const SAUCER := 0.066
 const PORCELAIN := Color(0.97, 0.96, 0.93)
@@ -12,7 +17,12 @@ const GOLD := Color(0.86, 0.67, 0.26)
 const TEA := Color(0.5, 0.27, 0.1)
 
 
-static func make_cup() -> Node3D:
+## A cup from `set`'s model ("celestia", "luna"), else made in code.
+static func make_cup(set := "") -> Node3D:
+	var model := _model(set, "cup")
+	if model != null:
+		model.name = "IdleLifeTeacup"
+		return model
 	var cup := Node3D.new()
 	cup.name = "IdleLifeTeacup"
 	var body := _mesh(_cylinder(CUP_TOP, CUP_FOOT, CUP_HEIGHT), _porcelain())
@@ -34,7 +44,11 @@ static func make_cup() -> Node3D:
 	return cup
 
 
-static func make_saucer() -> Node3D:
+static func make_saucer(set := "") -> Node3D:
+	var model := _model(set, "saucer")
+	if model != null:
+		model.name = "IdleLifeSaucer"
+		return model
 	var saucer := Node3D.new()
 	saucer.name = "IdleLifeSaucer"
 	var plate := _mesh(_cylinder(SAUCER, SAUCER * 0.62, 0.008), _porcelain())
@@ -94,3 +108,11 @@ static func _flat(colour: Color, roughness: float) -> StandardMaterial3D:
 	m.albedo_color = colour
 	m.roughness = roughness
 	return m
+
+
+static func _model(set: String, part: String) -> Node3D:
+	if set.is_empty(): return null
+	var path := MODELS % [set, part]
+	if not ResourceLoader.exists(path): return null
+	var scene: Variant = load(path)
+	return (scene as PackedScene).instantiate() as Node3D if scene is PackedScene else null

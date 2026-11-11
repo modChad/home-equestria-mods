@@ -22,6 +22,18 @@ const INK_LEFT := 0.18
 const INK_RIGHT := 0.82
 const SIGN_END := 0.5
 
+## Each princess's set: rollers, quill and inkwell modelled in Blender
+## (renders/idle_life/scroll_kit_v1.blend, models/<part>_<set>.glb), and the parchment and ink
+## colours drawn here in the show's style: plain parchment, soft purple-grey looping lines.
+const MODEL := "res://mods/idle_life/models/%s_%s.glb"
+const SETS := {
+	"celestia": {"paper": Color(0.96, 0.92, 0.78), "ink": Color(0.50, 0.46, 0.60)},
+	"luna": {"paper": Color(0.84, 0.87, 0.97), "ink": Color(0.40, 0.40, 0.62)},
+}
+## The modelled rollers' radius: how far apart they sit when rolled up.
+const ROLLER_R := 0.0195
+## set + what -> texture
+static var _set_textures: Dictionary = {}
 static var _face_texture: Texture2D
 static var _blank_texture: Texture2D
 static var _ink_texture: Texture2D
@@ -48,7 +60,10 @@ void fragment() {
 
 
 ## `writing`: a blank scroll whose rows of ink appear as set_written() says (the writing idle).
-static func make(writing := false) -> Node3D:
+## `set` ("celestia", "luna"): that princess's modelled rollers and parchment colours; without
+## one (or its files) the plain scroll below.
+static func make(writing := false, set := "") -> Node3D:
+	if SETS.has(set) and ResourceLoader.exists(MODEL % ["roller", set]): return _make_set(writing, set)
 	var root := Node3D.new()
 	root.name = "IdleLifeScroll"
 	var quad := QuadMesh.new()
@@ -126,8 +141,9 @@ static func set_open(root: Node3D, open: float) -> void:
 	var u := clampf(open, 0.0, 1.0)
 	var shown := HEIGHT * u
 	var top_y := HEIGHT / 2.0
+	var closed := float(root.get_meta("roll_r", ROLL)) * 2.0
 	(root.get_node("Top") as Node3D).position = Vector3(0.0, top_y, 0.0)
-	(root.get_node("Bottom") as Node3D).position = Vector3(0.0, top_y - maxf(shown, ROLL * 2.0), 0.0)
+	(root.get_node("Bottom") as Node3D).position = Vector3(0.0, top_y - maxf(shown, closed), 0.0)
 	for n: String in ["Front", "Back"]:
 		var face := root.get_node(n) as MeshInstance3D
 		face.visible = u > 0.02
@@ -270,7 +286,11 @@ static func _word_row(img: Image, rng: RandomNumberGenerator, y: int, left: int,
 
 ## The writing idle's quill: a white feather on a pale shaft with a gold nib. Its origin is the
 ## nib's tip; the shaft runs up along +Y, the feather's flat face toward +Z.
-static func make_quill() -> Node3D:
+static func make_quill(set := "") -> Node3D:
+	var model := _model("quill", set)
+	if model != null:
+		model.name = "IdleLifeQuill"
+		return model
 	var quill := Node3D.new()
 	quill.name = "IdleLifeQuill"
 	var nib := MeshInstance3D.new()
@@ -317,3 +337,141 @@ static func make_quill() -> Node3D:
 	vane.rotation.z = -0.08
 	quill.add_child(vane)
 	return quill
+
+
+
+## The writing idle's inkwell for `set`, or null without one. Its origin is the middle of its base.
+static func make_inkwell(set := "") -> Node3D:
+	var model := _model("inkwell", set)
+	if model != null: model.name = "IdleLifeInkwell"
+	return model
+
+
+## How high the inkwell's mouth is, and how deep the nib goes into it (from its base, metres).
+const INKWELL_MOUTH := 0.05
+const INKWELL_DIP := 0.034
+
+
+static func _model(part: String, set: String) -> Node3D:
+	if not SETS.has(set): return null
+	var path := MODEL % [part, set]
+	if not ResourceLoader.exists(path): return null
+	var scene: Variant = load(path)
+	return (scene as PackedScene).instantiate() as Node3D if scene is PackedScene else null
+
+
+static func _make_set(writing: bool, set: String) -> Node3D:
+	var colours: Dictionary = SETS[set]
+	var root := Node3D.new()
+	root.name = "IdleLifeScroll"
+	root.set_meta("roll_r", ROLLER_R)
+	var quad := QuadMesh.new()
+	quad.size = Vector2(WIDTH, HEIGHT)
+	var front := MeshInstance3D.new()
+	front.name = "Front"
+	front.mesh = quad
+	if writing:
+		var sm := ShaderMaterial.new()
+		var shader := Shader.new()
+		shader.code = WRITE_SHADER
+		sm.shader = shader
+		sm.set_shader_parameter("blank", _set_face(set, false))
+		sm.set_shader_parameter("ink", _set_ink(set))
+		sm.set_shader_parameter("rows", Vector4(LINES[0], LINES[1], LINES[2], LINES[3]))
+		front.material_override = sm
+	else:
+		var fm := StandardMaterial3D.new()
+		fm.albedo_texture = _set_face(set, true)
+		fm.roughness = 0.9
+		front.material_override = fm
+	root.add_child(front)
+	var back := MeshInstance3D.new()
+	back.name = "Back"
+	back.mesh = quad
+	var bm := StandardMaterial3D.new()
+	bm.albedo_color = (colours.paper as Color).darkened(0.08)
+	bm.roughness = 0.95
+	back.material_override = bm
+	back.rotation.y = PI
+	root.add_child(back)
+	for n: String in ["Top", "Bottom"]:
+		var roll := Node3D.new()
+		roll.name = n
+		root.add_child(roll)
+		var roller := _model("roller", set)
+		if roller != null: roll.add_child(roller)
+	set_open(root, 0.0)
+	return root
+
+
+## The parchment for `set`: plain, a little darker toward its edges; `rows` with every line of
+## writing on it (the reading idle), else blank for the ink to appear on.
+static func _set_face(set: String, rows: bool) -> Texture2D:
+	var key := "%s:face:%s" % [set, rows]
+	if _set_textures.has(key): return _set_textures[key]
+	var paper: Color = SETS[set].paper
+	var w := 256
+	var h := 352
+	var img := Image.create_empty(w, h, false, Image.FORMAT_RGBA8)
+	for y in h:
+		for x in w:
+			var edge := minf(minf(x, w - 1 - x) / 18.0, 1.0)
+			img.set_pixel(x, y, paper.darkened(0.06 * (1.0 - edge)))
+	if rows:
+		_lines(img, SETS[set].ink, LINES + [0.78], 2026)
+	img.generate_mipmaps()
+	var texture := ImageTexture.create_from_image(img)
+	_set_textures[key] = texture
+	return texture
+
+
+## The writing idle's ink for `set`, on its own (clear elsewhere), along each LINES row.
+static func _set_ink(set: String) -> Texture2D:
+	var key := "%s:ink" % set
+	if _set_textures.has(key): return _set_textures[key]
+	var img := Image.create_empty(256, 352, false, Image.FORMAT_RGBA8)
+	img.fill(Color(SETS[set].ink, 0.0))
+	_lines(img, SETS[set].ink, LINES, 2026)
+	img.generate_mipmaps()
+	var texture := ImageTexture.create_from_image(img)
+	_set_textures[key] = texture
+	return texture
+
+
+## Looping, joined-up lines of 'writing' at each of `rows` (fractions of the height), between
+## INK_LEFT and INK_RIGHT; the fourth row is a short signature with a sweeping underline.
+static func _lines(img: Image, colour: Color, rows: Array, seed: int) -> void:
+	var w := img.get_width()
+	var h := img.get_height()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed
+	for i in rows.size():
+		var y0 := float(rows[i]) * h
+		var x0 := INK_LEFT * w
+		var x1 := (SIGN_END if i == 3 else INK_RIGHT) * w
+		var x := x0
+		while x < x1 - 4.0:
+			var word := minf(rng.randf_range(16.0, 38.0), x1 - x)
+			var freq := rng.randf_range(0.55, 0.8)
+			var steps := int(word * 4.0)
+			for k in steps:
+				var px := x + word * k / steps
+				var py := y0 + 3.6 * sin(px * freq) + 1.4 * sin(px * freq * 2.3 + 0.7)
+				_ink_dot(img, px, py, 1.5, colour)
+			x += word + rng.randf_range(4.0, 7.0)
+		if i == 3:
+			for k in 160:
+				var f := k / 160.0
+				_ink_dot(img, lerpf(x1, x0, f), y0 + 8.0 + 2.0 * sin(f * PI), 1.2, colour)
+
+
+static func _ink_dot(img: Image, x: float, y: float, r: float, colour: Color) -> void:
+	for dy in range(int(floor(y - r)), int(ceil(y + r)) + 1):
+		for dx in range(int(floor(x - r)), int(ceil(x + r)) + 1):
+			if dx < 0 or dy < 0 or dx >= img.get_width() or dy >= img.get_height(): continue
+			var a := clampf(1.3 - Vector2(dx - x, dy - y).length() / r * 0.5, 0.0, 1.0)
+			var was := img.get_pixel(dx, dy)
+			if was.a >= 0.99 and was != Color(colour, 1.0):
+				img.set_pixel(dx, dy, was.lerp(Color(colour, 1.0), a))
+			else:
+				img.set_pixel(dx, dy, Color(colour, maxf(was.a, a)))

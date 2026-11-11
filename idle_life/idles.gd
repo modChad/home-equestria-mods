@@ -18,7 +18,7 @@ const LENGTH := {
 	"stargaze": 12.0,
 	"scroll": 9.5,
 	"tea": 9.4,
-	"write": 10.8,
+	"write": 13.6,
 	"shoe": 8.4,
 	"sun": 12.0,
 	"moon": 12.0,
@@ -58,11 +58,13 @@ const TEA_DOWN := Vector2(6.6, 7.5)
 ## Writing's beats (seconds): a blank scroll and a quill appear at WRITE_SHOW.x and vanish at .y;
 ## the scroll unrolls over WRITE_OPEN, the quill writes one row in each of WRITE_LINES (the last
 ## her signature), she nods at WRITE_NOD, and it rolls up over WRITE_CLOSE.
-const WRITE_SHOW := Vector2(0.9, 9.6)
+const WRITE_SHOW := Vector2(0.9, 12.5)
 const WRITE_OPEN := Vector2(1.2, 2.2)
-const WRITE_LINES := [Vector2(2.7, 4.1), Vector2(4.4, 5.8), Vector2(6.1, 7.5), Vector2(7.8, 8.4)]
-const WRITE_NOD := 8.55
-const WRITE_CLOSE := Vector2(8.8, 9.5)
+## Before each row the quill dips into the inkwell (where there is one) over WRITE_DIPS.
+const WRITE_DIPS := [Vector2(2.3, 3.2), Vector2(4.6, 5.5), Vector2(6.9, 7.8), Vector2(9.2, 10.1)]
+const WRITE_LINES := [Vector2(3.4, 4.5), Vector2(5.7, 6.8), Vector2(8.0, 9.1), Vector2(10.3, 10.9)]
+const WRITE_NOD := 11.1
+const WRITE_CLOSE := Vector2(11.6, 12.3)
 ## The shoe check's beats (seconds): a foreleg lifts over SHOE_LIFT; its shoe slides off in her
 ## magic over SHOE_OFF, comes up before her face over SHOE_UP, turns upside down over SHOE_FLIP,
 ## is shaken over SHOE_SHAKE (a pebble drops out at SHOE_PEBBLE), turns back over SHOE_UNFLIP,
