@@ -27,7 +27,7 @@ Status key: **Done** · **Next** · **Backburner** · **Idea**
 ### Teleport (`teleport-v1.0.0.pck`, v1.0.0, game 0.3.0)
 - **What it does:** adds `places` (a numbered list of houses, landmarks and regions) and `tp` (to a place, a list number, a pony or coordinates) to the debug console and Settings → Debug.
 
-### Idle Life (`idle-life-v1.4.0.pck`, v1.4.0, game 0.3.0)
+### Idle Life (`idle-life-v1.4.1.pck`, v1.4.1, game 0.3.0)
 - **What it does:** sixteen new idles for ponies standing about: a light or deep stretch (pegasi spread their wings), pawing the ground, looking round, a wing stretch and wing preen (pegasi), a magic fringe brush and magic sparkles (unicorns and alicorns), and at night dozing off and stargazing. For Celestia and Luna: reading a scroll, writing one with a quill, tea and a shoe check. Celestia tends the sun at sunrise and sunset; Luna checks the moon at moonrise and moonset.
 - **Remembered:** nearby ponies (and the pony herself) remember the notable idles, so they can bring them up in conversation.
 - **When:** the game's own fidget rules decide, roughly every 18–45 s per pony; anything that disturbs her fades it out.
@@ -48,6 +48,7 @@ Status key: **Done** · **Next** · **Backburner** · **Idea**
   - **Tea sets:** a cup and saucer each, under 500 tris per set (`tea_<princess>_cup/saucer.glb`; Blender file `renders/idle_life/tea_sets_v2.blend`).
   - **Scroll kit:** scroll rollers, a quill and a floating inkwell each (`roller_/quill_/inkwell_<princess>.glb`; `renders/idle_life/scroll_kit_v1.blend`). Paper and ink tinted per princess.
   - **Writing now 13.6 s:** the inkwell floats at her left (on her right it sat in Celestia's mane) and the quill dips before each of the four lines.
+- **Built v1.4.1 (2026-11-11):** the scroll floats further out (45 cm ahead, a little higher and 10 cm to her left) and the inkwell further out from her, clear of Flowing Manes' fuller manes.
 - **Debug mod: Idle Life Debug** (`mods/idle_life_debug/`, private, `"private": true` in mod.json so it stays out of the GitHub README). Its pack is not kept in release_packs; build it with `--out` somewhere else (e.g. `tools/_il_lab/`). Debug console commands: `idle list`, `idle <name> [pony]`, `idle run_all [pony]`, `idle stop [pony]` (no pony = the one you're looking at, within 12° of screen centre and 25 m). It forces the idle through Idle Life's `play()`, and chains onto the console after other mods (e.g. Teleport) so their commands still work.
 - **Lab:** `tools/_il_lab/` (moved under tools/). Switches: `--look-ahead` (she looks ahead, not at the camera), `--scale N`, `--over` (over her shoulder), `--hoof` (close on her front hooves), `--fake-ai` (a stand-in AI memory that prints what's recorded), `--console-test` (types debug-console commands into the real console), `--snapshot t1,t2` (bakes posed meshes to .obj plus the shoe path as .json, for Blender); a second `--mod-src princess_wings` loads Princess Wings too. Renders in `renders/idle_life/`. Renders only run ~3 min per call, so long idles go at 15 fps.
 
@@ -66,7 +67,7 @@ Status key: **Done** · **Next** · **Backburner** · **Idea**
 - **Game bugs found:** the princess fits leave the open-wing bones unfitted (`pony_WingBase_*` keep the mare's offsets scaled from the spine); Celestia's folded-wing bones are ~1 cm asymmetric.
 - **Status:** given to the game's developer; expected in the next release.
 
-### Kissing (`kissing-v1.2.0.pck`, v1.2.0, game 0.3.0)
+### Kissing (`kissing-v1.2.7.pck`, v1.2.7, game 0.3.0)
 - **What it does:** hold K to kiss the pony you're facing (within 1.5 m, times her size above Canon), no carrying needed. She walks up, Anon bends down to her (his standing eye height eases to just above her lips, like Ctrl's crouch), and the game's own kiss starts (`PonyAffection.begin`). VR (attempted, untested): lean in within 8 cm of her lips for 0.4 s.
 - **Game rules kept:** kissing back or turning away (`affection_allowed`; only ponies who'd welcome it, per `bonds.welcomes`, walk over), deep after 0.6 s held with lips together (K again ends it), forehead kiss for fillies/colts or a young player, buck if pressed again after a refusal.
 - **How:** entry script driving the game's `pony_kisser.gd`. Its kisses are hidden from the kisser for its tick (priority −25) and handed back afterwards (−19), so the kisser's unscaled checks don't end them; the mod does the per-tick work itself (target, eye, face, near plane, `kiss_hold`) with limits scaled to her size.
@@ -74,6 +75,14 @@ Status key: **Done** · **Next** · **Backburner** · **Idea**
 - **Remembered:** onlookers within 10 m get a line ("Anon kissed …", "… shared a long, deep kiss", forehead, refused), at most once per pony per 3 min. Her own memory of it is the game's (director_contacts).
 - **v1.1.0 (2026-11-10): feelings build up** instead of the game's loud horn flare every ~0.9 s (`excitement.gd`). `feelings.gd`: `level` 0..1 rises while she's excited (kiss 0.05/s, deep 0.09/s, petting/AI 0.06/s) up to a peak by bond (acquaintance .35 … married 1.0), holds 1.5 s, fades over 4 s; applies to all excitement. Horn: a quiet aura, sparkles and light that grow and pulse, a hum (peak 0.10). `wings.gd`: spread wings shiver past 0.45 (roots 0.5°, feathers 1.4°, tips 2°, a ripple now and then). `fidgets.gd` (earth ponies): weight shifting, tail swish, ear flicks, hoof taps. After a kiss she backs out of his face; he stays bent until there's room.
 - **v1.2.0 (2026-11-10): rising into his arms.** In a deep kiss with a partner (dating or closer), below Hoers size, she rears up on her hind legs and rests her forehooves over his shoulders, kneading gently (`rear.gd` plays `rear_anim.json`). A procedural first try read as "front legs raised", so the motion was keyframed in Blender on the game's rig: `renders/kissing/blender_rear/rear_v2.blend`. 5 s: a small gathering dip, rise to 55° about her hips with the chest curling forward and forelegs tucked, then forelegs reach over his shoulders and knead slowly; neck keeps lips on his. Canon Celestia can't reach a standing 6 ft Anon's shoulders, so he stays bent to ~1.41 m eye. At Hoers size she bows instead.
+- **v1.2.1–1.2.7 (2026-11-11): clipping fixes and options.**
+  - **1.2.1:** her face stays a few cm off Anon's eyes (her neck turns her head back if her skull or nose gets too close); if her neck or chest comes too close she backs up instead of walking in (`guard.gd`).
+  - **1.2.2:** at Canon size her head keeps further off his eyes (forehead and mane went through the camera).
+  - **1.2.3:** at Canon size she rests her forehooves on his chest instead of his shoulders, so he no longer bends down into her neck.
+  - **1.2.4:** **Shift+K** toggles rearing kisses on/off, with a message; the choice is remembered.
+  - **1.2.5:** her muzzle bridge is kept off his eyes too (Canon and JRHNBR clipping); he straightens up within 2.5 s after a kiss regardless.
+  - **1.2.6:** his body crouches with his view when he bends to her, so the camera doesn't sink into his own chest.
+  - **1.2.7:** she tilts her head to a random side as she kisses, so her forehead passes beside his eyes.
 - **Lab:** `tools/_kiss_lab/lab.tscn -- --mod-src kissing --who celestia --cases light,deep,refused` (`--scale N`, `--stage <bond>`, `--deep-hold N`, `--after N`, `--fp`, `--as-earth`, `--wingcam`, `--legcam --legdist N`, `--flip`, `--probe`..`--probe4`). Fake relationship runtime; Anon is a capsule with a fake desktop eye height on the real player's layers. Movies record audio. Renders in `renders/kissing/`. Leftover scratch file `tools/_kiss_lab/_hier.gd` (couldn't delete).
 - **Unchecked:** full game, VR, Anon height settings, the mane 6 earth ponies' tails, the onlooker memory with the real AI.
 
@@ -165,7 +174,7 @@ Status key: **Done** · **Next** · **Backburner** · **Idea**
 - **Desktop first:** mods are made and tested for desktop; VR controls are attempted but not tested.
 - **Foals:** no romance with foals, or when the player is one.
 - **Sign-off:** every mod's `mod.json` author is modChad.
-- **Packs:** named `<mod-name>-vX.Y.Z.pck` (e.g. `idle-life-v1.4.0.pck`), built by `mods/build_packs.sh` into `mods/release_packs/` (with a `.gdignore`), never left in the mod's own folder. Only the current version of each public mod stays in release_packs: move the old one out after a build. Debug and private packs never go there.
+- **Packs:** named `<mod-name>-vX.Y.Z.pck` (e.g. `idle-life-v1.4.1.pck`), built by `mods/build_packs.sh` into `mods/release_packs/` (with a `.gdignore`), never left in the mod's own folder. Only the current version of each public mod stays in release_packs: move the old one out after a build. Debug and private packs never go there.
 - **GitHub README:** `build_packs.sh` runs `mods/update_readme.py`, which sets the Version and Download cells in `mods/.github/README.md` (adding rows for new mods). Mods with `"private": true` in mod.json (e.g. Idle Life Debug) are left out. Each mod's README install line names the versioned pack too.
 - **AI memory:** to let ponies know something happened, record it with `game.world_context.record(kind, text, witnesses, subjects)`; witness ids come from `game.director.characters`.
 - **AI consent:** to know what Anon just said to a pony, connect to `game.director.transcript(text)` and match it against the end of her last `"user"` entry in `director.characters[id].history` (the game prefixes notes to it).
