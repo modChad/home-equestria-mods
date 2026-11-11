@@ -1,0 +1,13 @@
+{
+ "lore": [
+  {
+   "id": "fishing_pier",
+   "scope": "authored",
+   "triggers": ["fish", "fishing", "pier", "dock", "rod", "rods", "canal", "river", "catch", "caught", "bucket", "pail", "bait", "angler"],
+   "viewers": [],
+   "priority": 30,
+   "provenance": "Fishing mod",
+   "text": "There is a wooden fishing pier on the Ponyville canal, with a rack of three fishing rods anyone may borrow and a pail that keeps the catch alive. Trout, perch, carp, catfish and little sunfish live in Ponyville's waters; catfish bite after dark, and there are tales of a golden carp and a catfish that glows under a full moon. If Anon is fishing at the pier and you are nearby or following him, you may join him: you will take a rod from the rack and fish beside him. Anon keeps an Angler's Log of his catches."
+  }
+ ]
+}
