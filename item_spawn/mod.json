@@ -1,0 +1,9 @@
+{
+	"id": "item_spawn",
+	"name": "Item Spawn",
+	"version": "1.0.0",
+	"author": "modChad",
+	"description": "Adds the is command to the debug console: list every item in the game, then put any of them straight into your briefcase by id or name.",
+	"game_version": "0.3.0-maredev",
+	"entry": "res://mods/item_spawn/main.gd"
+}
