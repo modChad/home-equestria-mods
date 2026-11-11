@@ -1,7 +1,7 @@
 {
 	"id": "fishing",
 	"name": "Fishing",
-	"version": "0.4.0",
+	"version": "0.4.1",
 	"author": "modChad",
 	"description": "The river pier's fishing, made readable: a bigger float, splashes and ripples, a clear bite you can feel, fish that depend on the water (and two rare ones), junk, a live-well bucket, the Angler's Log, and ponies who notice your catches.",
 	"game_version": "0.3.0-maredev",
