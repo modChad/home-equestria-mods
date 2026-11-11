@@ -15,7 +15,7 @@ You need to be in the basket yourself, and it has to be landed with the gate ope
 
 ## Install
 
-Put `balloon_boarding.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
+Put `balloon-boarding-v1.0.0.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
 
 ## Things to know
 

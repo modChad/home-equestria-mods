@@ -32,7 +32,7 @@ See `CHANGES.md` for what changed in each version and why. In short, since 2.1:
 
 ## Installing
 
-1. Put `pegasus_ride_v2.pck` in your mods folder
+1. Put `pegasus-ride-v2-v2.2.1.pck` in your mods folder
    (**Settings → Mods → Open mods folder**).
 2. Restart the game.
 3. The Mods menu must show **"Pegasus Ride 2.2.1 – Anon"**.
@@ -187,9 +187,13 @@ Further lines on takeoff and for every destination:
 
 ## Building
 
-```powershell
-godot --headless --xr-mode off --path C:\ModPack --script res://pack_mod.gd -- "<game>\mods\pegasus_ride_v2" "pegasus_ride_v2" "<game>\mods\pegasus_ride_v2.pck"
+From the game project, with this folder at `res://mods/pegasus_ride_v2/`:
+
 ```
+mods/build_packs.sh pegasus_ride_v2
+```
+
+That writes `mods/release_packs/pegasus-ride-v2-v2.2.1.pck`.
 
 Check the syntax first:
 

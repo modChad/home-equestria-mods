@@ -8,7 +8,7 @@ A Home: Equestria mod that lets you groom ponies: brush their mane and tail, bru
 
 ## Install
 
-1. Put `grooming.pck` in your mods folder. In game, **Settings → Mods → Open mods folder** opens it.
+1. Put `grooming-v1.0.3.pck` in your mods folder. In game, **Settings → Mods → Open mods folder** opens it.
 
    | System | Mods folder |
    | --- | --- |

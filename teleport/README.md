@@ -23,7 +23,7 @@ The console is part of the game's developer tools. To turn them on, go to **Sett
 
 ## Install
 
-Put `teleport.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
+Put `teleport-v1.0.0.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
 
 ## Things to know
 

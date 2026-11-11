@@ -1,6 +1,6 @@
 # Kissing
 
-- **Version:** 1.1.0
+- **Version:** 1.2.7
 - **Made for:** Home: Equestria 0.3.0-maredev
 - **Works on:** desktop (hold K) and VR (lean in)
 
@@ -23,13 +23,46 @@ Instead of the game's loud magic flare every second, a pony's excitement now bui
 
 After a kiss she steps back out of your face, and you stand up again once there's room.
 
+## Into your arms (1.2.0)
+
+In a deep kiss with a pony you're dating, engaged or married to, she rears up on her hind legs, forelegs folded, then rests them over your shoulders and kneads gently while you kiss. When the kiss ends she drops back down. A small pony (Canon size) can't reach a standing Anon's shoulders, so you stay bent to her. At Hoers size she bows down to you instead. The rise was keyframed in Blender on the game's own rig.
+
+## Less clipping (1.2.1)
+
+Her face now stays a few centimetres off your eyes (her neck turns her head back if her skull or nose gets too close), and if her neck or chest comes too close to you she backs up instead of walking in. Fixes the camera ending up inside her head or body, mostly at bigger sizes and during the rear.
+
+## Canon size fix (1.2.2)
+
+At Canon size her forehead and mane went through the camera during normal kisses and the rear. She now keeps her head further off your eyes.
+
+## Rear at Canon (1.2.3)
+
+At Canon size she now rests her forehooves on your chest instead of your shoulders, so you no longer bend down into her neck and chest.
+
+## Rear toggle (1.2.4)
+
+Press **Shift+K** to turn rearing kisses on or off. A message confirms it, and the choice is remembered.
+
+## Fixes (1.2.5)
+
+- Her muzzle (the bridge of her nose) is now kept off your eyes too, not just her skull and nose tip. Fixes clipping in normal kisses at Canon and JRHNBR sizes.
+- You no longer stay bent after a kiss: she steps back further, and you straighten up within 2.5 s regardless.
+
+## Fix (1.2.6)
+
+When you bend down to her, your body now crouches with your view instead of staying upright, so the camera no longer sinks into your own chest.
+
+## Head tilt (1.2.7)
+
+She tilts her head to one side as she kisses you (a random side each kiss), so her forehead passes beside your eyes instead of into them.
+
 ## Install
 
-Put `kissing-v1.1.0.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
+Put `kissing-v1.2.7.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
 
 ## Build from source
 
-Copy `main.gd`, `mod.json` and this README into `res://mods/kissing/` in the game project, then run `mods/build_packs.sh kissing`.
+Copy this folder into `res://mods/kissing/` in the game project, then run `mods/build_packs.sh kissing`.
 
 ## Things to know
 

@@ -16,7 +16,7 @@ Only the open wings move. Their bodies, folded wings and skeletons are untouched
 
 ## Install
 
-Put `princess_wings.pck` in the game's `mods` folder and switch it on in **Settings → Mods**. It switches on and off straight away; switched off, the wings go back to the game's placement.
+Put `princess-wings-v1.0.0.pck` in the game's `mods` folder and switch it on in **Settings → Mods**. It switches on and off straight away; switched off, the wings go back to the game's placement.
 
 ## Things to know
 

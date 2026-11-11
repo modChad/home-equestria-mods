@@ -1,0 +1,10 @@
+{
+	"id": "idle_life_debug",
+	"name": "Idle Life Debug",
+	"version": "1.0.0",
+	"author": "modChad",
+	"description": "Debug only: an idle command for the debug console to play any Idle Life idle on the pony you're looking at or a named pony. Needs Idle Life.",
+	"game_version": "0.3.0-maredev",
+	"private": true,
+	"entry": "res://mods/idle_life_debug/main.gd"
+}
