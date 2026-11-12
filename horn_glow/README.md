@@ -1,6 +1,6 @@
 # Horn Glow
 
-- **Version:** 1.1.0
+- **Version:** 1.1.1
 - **By:** modChad
 - **Made for:** Home: Equestria 0.3.0-maredev
 
@@ -15,6 +15,10 @@ A unicorn's horn magic now glows around the horn itself, instead of as a round d
 
 Kissing's build-up and Idle Life's magic sparks use the horn glow when this mod is on.
 
+## Fix (1.1.1)
+
+Fixed a crash on start-up (seen with the Kissing mod loaded): the mod no longer replaces a game script.
+
 ## Install
 
-Put `horn-glow-v1.1.0.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
+Put `horn-glow-v1.1.1.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.

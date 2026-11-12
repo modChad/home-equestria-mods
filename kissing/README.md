@@ -1,6 +1,6 @@
 # Kissing
 
-- **Version:** 1.2.8
+- **Version:** 1.2.9
 - **Made for:** Home: Equestria 0.3.0-maredev
 - **Works on:** desktop (hold K) and VR (lean in)
 
@@ -60,9 +60,13 @@ She tilts her head to one side as she kisses you (a random side each kiss), so h
 
 With the Horn Glow mod, a unicorn's build-up lights the glow around her horn (and its hum) instead of the round disc of light.
 
+## Fix (1.2.9)
+
+Works with Horn Glow 1.1.1.
+
 ## Install
 
-Put `kissing-v1.2.8.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
+Put `kissing-v1.2.9.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
 
 ## Build from source
 
