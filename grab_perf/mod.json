@@ -1,0 +1,9 @@
+{
+	"id": "grab_perf",
+	"name": "Grab Perf",
+	"version": "1.0.0",
+	"author": "modChad",
+	"description": "Stops VR frame drops while your hands are clenched: the leg-grab check only looks at ponies near your hands instead of every pony in town.",
+	"game_version": "0.3.0-maredev",
+	"entry": "res://mods/grab_perf/main.gd"
+}
