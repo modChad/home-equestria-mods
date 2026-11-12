@@ -1,0 +1,9 @@
+{
+	"id": "russian_ponies",
+	"name": "Russian Ponies",
+	"version": "1.0.0",
+	"author": "modChad",
+	"description": "Ponies understand Russian and always talk in Russian: conversations with Anon, group chats and the chatter you overhear. Type to them in Russian. Menus and other game text stay in English, and voices are not supported.",
+	"game_version": "0.3.0-maredev",
+	"entry": "res://mods/russian_ponies/main.gd"
+}
