@@ -1,0 +1,9 @@
+{
+	"id": "typing_lock",
+	"name": "Typing Lock",
+	"version": "1.0.0",
+	"author": "modChad",
+	"description": "While you type in any text box (chat, console, search fields), every game hotkey is switched off and Anon can't move, so typing \"Wait\" or \"quick\" no longer walks you forward or gets you up from a bed, seat or the grass.",
+	"game_version": "0.3.0-maredev",
+	"entry": "res://mods/typing_lock/main.gd"
+}
