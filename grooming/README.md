@@ -2,7 +2,7 @@
 
 A Home: Equestria mod that lets you groom ponies: brush their mane and tail, brush their coat, and preen a pegasus's or alicorn's wings. Each action has its own animation, and finishing a grooming brings you and the pony closer.
 
-- **Version:** 1.0.3
+- **Version:** 1.0.4
 - **Made for:** Home: Equestria 0.3.0-maredev
 - **Works on:** desktop and VR
 

@@ -842,7 +842,7 @@ func _play_sound(tool: String, at: Vector3, dt: float) -> void:
 	var path := SND + "coat_stroke_%02d.wav" % (randi() % COAT_STROKES + 1)
 	if not ResourceLoader.exists(path): return
 	_audio.stream = load(path)
-	_audio.volume_db = randf_range(-11.0, -9.0)
+	_audio.volume_db = randf_range(-17.0, -15.0)
 	_audio.pitch_scale = randf_range(0.94, 1.06)
 	_audio.global_position = at
 	_audio.play()
