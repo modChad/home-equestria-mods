@@ -1,6 +1,6 @@
 # Kissing
 
-- **Version:** 1.2.9
+- **Version:** 1.2.10
 - **Made for:** Home: Equestria 0.3.0-maredev
 - **Works on:** desktop (hold K) and VR (lean in)
 
@@ -64,9 +64,13 @@ With the Horn Glow mod, a unicorn's build-up lights the glow around her horn (an
 
 Works with Horn Glow 1.1.1.
 
+## VR fix (1.2.10)
+
+In VR, leaning in to kiss works again after the first kiss: once the kiss is over and you pull your head back, you can lean in for another. Before, it only worked again after pressing the kiss button or reloading.
+
 ## Install
 
-Put `kissing-v1.2.9.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
+Put `kissing-v1.2.10.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
 
 ## Build from source
 

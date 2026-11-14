@@ -51,6 +51,11 @@ var _far := 0.0
 ## VR: the pony whose lips his are near, and for how long.
 var _lean_pony: Node3D
 var _lean_time := 0.0
+## A lean-in kiss took the kisser's one-try-per-hold lock (_used_hold), which only a button press
+## cleared, so leaning never worked again (VR player report). Re-armed once the kiss is over and
+## he has pulled back out of reach (LEAN_REARM), so her still-close face doesn't start another.
+var _lean_rearm := false
+const LEAN_REARM := 0.2
 ## pony -> {"deep": bool} for a kiss under way, written to memory once it ends.
 var _pending: Dictionary = {}
 var _recorded: Dictionary = {}
@@ -593,6 +598,11 @@ func after_player(delta: float) -> void:
 # ---------------------------------------------------------------- VR: leaning in
 
 func _vr_lean(camera: Camera3D, delta: float) -> void:
+	if _lean_rearm:
+		if _kisser.get("_down") == true: _lean_rearm = false # A button press clears the lock itself.
+		elif _mine == null and not is_instance_valid(_kisser.get("_active")) and not _lean_close(camera, LEAN_REARM):
+			_lean_rearm = false
+			_kisser.set("_used_hold", false)
 	if not _can_start() or _kisser.get("_down") == true:
 		_lean_time = 0.0
 		return
@@ -616,6 +626,17 @@ func _vr_lean(camera: Camera3D, delta: float) -> void:
 	_lean_pony = null
 	_start(near, camera, true)
 	if _mine == null: _kisser.set("_used_hold", false) # Turned away: another lean may try again.
+	else: _lean_rearm = true
+
+
+## Any pony's lips within `reach` of his.
+func _lean_close(camera: Camera3D, reach: float) -> bool:
+	var mouth: Vector3 = _kisser.mouth_world()
+	var forward := -camera.global_basis.z.normalized()
+	for pony: Variant in _kisser.get("ponies"):
+		if not is_instance_valid(pony) or not (pony as Node3D).is_inside_tree(): continue
+		if pony.kiss_contact_distance(mouth, forward) <= reach: return true
+	return false
 
 
 # ---------------------------------------------------------------- remembering
