@@ -9,6 +9,12 @@ extends SkeletonModifier3D
 const SKULL_ROOM := 0.11 # Metres past her skull's radius.
 const NOSE_ROOM := 0.08
 const MUZZLE_ROOM := 0.07 # Metres past her muzzle's surface.
+## A sitting or lying pony (main.gd sets `relaxed`): he kisses down to her and her neck can't
+## stretch up past the full rooms, so they shrink to these, enough to keep her face off the lens.
+const RELAXED_SKULL := 0.04
+const RELAXED_NOSE := 0.04
+const RELAXED_MUZZLE := 0.02
+var relaxed := false
 const NOSE_RADIUS := 0.35 # Her muzzle at the nose, as a share of her skull's radius.
 const PASSES := 6
 ## She tilts her head this far to one side through a kiss, turning about her lips (which stay on
@@ -49,11 +55,14 @@ func _process_modification() -> void:
 	var nose_in: Vector3 = pose.get("nose_in_head")
 	var radius := float(pose.get("skull_radius")) / scale
 	_tilt_head(sk, pose, at_eye)
-	var points := [[skull_in, radius + SKULL_ROOM / scale], [nose_in, NOSE_ROOM / scale]]
+	var skull_room := RELAXED_SKULL if relaxed else SKULL_ROOM
+	var nose_room := RELAXED_NOSE if relaxed else NOSE_ROOM
+	var muzzle_room := RELAXED_MUZZLE if relaxed else MUZZLE_ROOM
+	var points := [[skull_in, radius + skull_room / scale], [nose_in, nose_room / scale]]
 	# Her muzzle between them, narrowing toward the nose: the bridge of her nose had sat on his eyes.
 	if skull_in != Vector3.ZERO and nose_in != Vector3.ZERO:
 		for t: float in [0.3, 0.55, 0.8]:
-			points.append([skull_in.lerp(nose_in, t), lerpf(radius, radius * NOSE_RADIUS, t) + MUZZLE_ROOM / scale])
+			points.append([skull_in.lerp(nose_in, t), lerpf(radius, radius * NOSE_RADIUS, t) + muzzle_room / scale])
 	clearance = ((sk.get_bone_global_pose(_head) * skull_in).distance_to(at_eye) - radius) * scale
 	for _pass in PASSES:
 		var worst := 0.0
