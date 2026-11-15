@@ -2,7 +2,8 @@ extends RefCounted
 ## Fishing: ponies notice catches. Notable ones (a first, a personal best, a rare fish, a big one,
 ## junk) are written to the game's witnessed-events memory for ponies within 10 m, so the AI can
 ## bring them up later. A pony fishing with you (or one close by, for notable catches) says a
-## short line over her head, no AI call (world/ai/overhead_dialogue.gd, as the courier does).
+## short line over her head, no AI call (world/ai/overhead_dialogue.gd, as the courier does), spoken
+## in her voice with the game's voice setting (0.7.0).
 ## Her own catches she announces too.
 const OVERHEAD := preload("res://world/ai/overhead_dialogue.gd")
 const WITNESS_RANGE := 10.0
@@ -138,3 +139,25 @@ func _say(pony: Node3D, text: String) -> void:
 	speech.call("show_for", pony, cam)
 	_speech[pony] = speech
 	host.get_tree().create_timer(4.5).timeout.connect(func() -> void: if is_instance_valid(speech): speech.queue_free())
+	_voice(pony, text)
+
+## Speaks the line in her voice, following the game's voice setting (Ponese or TTS), through the
+## director's own speech engine (tts_client.gd synthesize_profile). Skipped if the engine is busy
+## or a conversation is going on, so it never cuts across the AI; the words show either way.
+func _voice(pony: Node3D, text: String) -> void:
+	var game: Variant = Mods.get("game")
+	if not is_instance_valid(game): return
+	var director: Variant = game.get("director")
+	if not is_instance_valid(director) or str(director.get("state")) != "idle": return
+	var tts: Variant = director.get("tts")
+	if not is_instance_valid(tts) or tts.get("busy") == true or not tts.has_method("synthesize_profile"): return
+	var identity: Variant = pony.get("identity")
+	var id := str((identity as Resource).get("id")) if identity is Resource else ""
+	var cast: Variant = director.get("characters")
+	if id.is_empty() or not cast is Dictionary or not (cast as Dictionary).has(id): return
+	var profile: Dictionary = cast[id].get("profile", {})
+	tts.synthesize_profile(text, profile, "happy", func(path: String, error: String) -> void:
+		if error != "" or path.is_empty() or not is_instance_valid(pony) or not pony.has_method("say"): return
+		if pony.has_method("is_speaking") and pony.is_speaking(): return
+		if is_instance_valid(director) and str(director.get("state")) != "idle": return
+		pony.say(path, text))

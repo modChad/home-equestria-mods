@@ -70,7 +70,18 @@ func _look_hit() -> Dictionary:
 	return hit if not hit.is_empty() and hit.collider == _prop_body else {}
 
 func interaction_hint() -> Dictionary:
-	if not is_instance_valid(inventory) or not bool(inventory.get("_desktop")): return {}
+	if not is_instance_valid(inventory): return {}
+	# Held: how to read it, as the game does for its own held tools (briefcase_inventory.gd).
+	var side := held_side()
+	if side != "" and not is_open():
+		var item: Node3D = inventory.held[side]
+		var text := "Click · Read the Angler's Log"
+		if side != "desktop":
+			if not _float_page.visible: text = "Trigger · Read the Angler's Log"
+			elif _page >= _pages().size() - 1: text = "Trigger · Close the log"
+			else: text = "Trigger · Next page"
+		return {"target": item, "text": text, "point": item.global_position + Vector3.UP * (.3 if _float_page.visible else .15)}
+	if not bool(inventory.get("_desktop")): return {}
 	var hit := _look_hit()
 	if hit.is_empty(): return {}
 	return {"target": _prop_body, "text": "[E] Take the Angler's Log" if not inventory.hand_busy("desktop") else "Angler's Log · hands full", "point": hit.position, "collider": _prop_body}
@@ -113,7 +124,7 @@ func on_input(event: InputEvent) -> bool:
 				_: close()
 			return true
 		return false
-	if held_side() == "desktop" and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT \
+	if held_side() == "desktop" and event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT] \
 			and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		open(); return true
 	return false
@@ -233,8 +244,10 @@ func _vr_page() -> void:
 	var sample: Dictionary = inventory.hand_sample(side)
 	var down := float(sample.get("trigger", 0.0)) > .6
 	if down and not _vr_trigger.get(side, true):
-		if _float_page.visible: _page = wrapi(_page + 1, 0, _pages().size())
-		_float_page.visible = true
+		# Trigger: show the first page, then the next; after the last page the log closes.
+		if not _float_page.visible: _page = 0; _float_page.visible = true
+		elif _page >= _pages().size() - 1: _float_page.visible = false
+		else: _page += 1
 	_vr_trigger[side] = down
 	if _float_page.visible:
 		var item: Node3D = inventory.held[side]

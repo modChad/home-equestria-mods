@@ -14,6 +14,12 @@ const STATIONS := preload("res://world/mechanics/stations/stations.gd")
 const LOG := preload("res://mods/fishing/angler_log.gd")
 const REACT := preload("res://mods/fishing/reactions.gd")
 const GIFTS := preload("res://world/mechanics/gifts/gifts.gd")
+const MAGIC_HOLD := preload("res://mods/fishing/magic_hold.gd")
+const TYPING_GUARD := preload("res://mods/fishing/typing_guard.gd")
+const PIER_FOOTING := preload("res://mods/fishing/pier_footing.gd")
+const WATER_RELEASE := preload("res://mods/fishing/water_release.gd")
+const COMPANIONS := preload("res://mods/fishing/companions.gd")
+const GAME_COMPANIONS := "res://world/minigames/fishing/fishing_companions.gd"
 ## Ponies who like fish (so the favour system has them ask for it): Big Mac and Spike, and
 ## Fluttershy for her animals (her dislike of fish is lifted while the mod is on).
 const FISH_FANS := ["big_mcintosh", "spike", "fluttershy"]
@@ -28,10 +34,15 @@ var _rods: Dictionary = {}   # rod -> {old_line, line, feedback}
 var _watch: Node             # at the end of the root, so its _input runs before the game's
 var _busy: Dictionary = {}   # rod -> true while a keep/release animation plays
 var _vr_trigger: Dictionary = {}
+var _swapped: Array[Node] = []   # fishing runtimes whose FishingCompanions we replaced
 
 func _ready() -> void:
 	hud = HUD.new(); hud.name = "FishingHud"; add_child(hud)
 	reactions = REACT.new(); reactions.host = self
+	var magic_hold: Node = MAGIC_HOLD.new(); magic_hold.name = "MagicHold"; magic_hold.host = self; add_child(magic_hold)
+	var footing: Node = PIER_FOOTING.new(); footing.name = "PierFooting"; footing.host = self; add_child(footing)
+	var typing_guard: Node = TYPING_GUARD.new(); typing_guard.name = "TypingGuard"; typing_guard.host = self; add_child(typing_guard)
+	var water: Node = WATER_RELEASE.new(); water.name = "WaterRelease"; water.host = self; add_child(water)
 	_patch_tastes()
 	Mods.on_node(_is_pier_rod, _adopt)
 	_watch = Node.new(); _watch.name = "FishingInput"
@@ -177,7 +188,7 @@ func _bookkeeping(rod: Node, fish: Dictionary) -> void:
 	STATIONS.note(rod, "fishing_dock", catcher, ["food:fish-" + str(fish.id)], "caught")
 	var host: Node = runtime.get("host") if runtime != null else null
 	if is_instance_valid(host) and is_instance_valid(host.get("relationship_runtime")) and is_instance_valid(companions) \
-			and companions.has_method("_player_fishing") and companions._player_fishing():
+			and (companions.player_with_rod() if companions.has_method("player_with_rod") else companions._player_fishing()):
 		var participants: Array = []
 		for lease: Dictionary in companions.get("leases"): participants.append(str(lease.id))
 		_catch_serial += 1
@@ -205,6 +216,7 @@ func _add_landmarks(dock: Node3D) -> void:
 	if not _landmarks.is_empty(): return
 	for row in LANDMARKS:
 		var m := Marker3D.new(); m.name = "AI_" + str(row[0]); m.position = row[2]
+		# Plain ids: pony_action_schema.gd _id() rejects ':' so "landmark:..." can't be a [look_at] target.
 		m.set_meta("ai_id", str(row[0])); m.set_meta("ai_label", str(row[1]))
 		dock.add_child(m); m.add_to_group("ai_observable"); _landmarks.append(m)
 
@@ -299,6 +311,7 @@ func on_physics() -> void:
 		get_tree().root.move_child(_watch, -1)
 	for rod: Node in _rods:
 		if not is_instance_valid(rod): continue
+		_swap_companions(rod.get_parent().get_parent())
 		# The rod went back to the rack (or the hand let go) with a fish still on: keep it.
 		if str(rod.line.state) == "landed" and str(rod.holder) != "player" and not _busy.has(rod): keep(rod)
 	if not is_instance_valid(bucket):
@@ -331,11 +344,40 @@ func _desktop(rod: Node) -> bool:
 	var hands := _hands_for(rod)
 	return not is_instance_valid(hands) or str(hands.get("side")) in ["desktop", ""]
 
+## Any pier rod's inventory (water_release.gd).
+func _any_inventory() -> Node:
+	if is_instance_valid(bucket) and is_instance_valid(bucket.inventory): return bucket.inventory
+	for r: Node in _rods:
+		if is_instance_valid(r) and is_instance_valid(_inventory(r)): return _inventory(r)
+	return null
+
 func _inventory(rod: Node) -> Node:
 	var hands := _hands_for(rod)
 	return hands.get("inventory") if is_instance_valid(hands) else null
 
+## Swaps the game's FishingCompanions for companions.gd once the runtime has set it up, so ponies
+## fish without waiting for the player's rod. Undone in _exit_tree.
+func _swap_companions(runtime: Node) -> void:
+	if runtime == null or _swapped.has(runtime): return
+	_replace_companions(runtime, COMPANIONS)
+
+func _replace_companions(runtime: Node, script: Script) -> void:
+	var old: Node = runtime.get("companions") as Node
+	if not is_instance_valid(old) or old.get("hands") == null: return
+	if old.get_script() == script: return
+	old.call("release_all", "fishing mod swapping companions")
+	var c: Node = script.new(); c.set("autonomous", old.get("autonomous"))
+	runtime.remove_child(old); old.queue_free()
+	c.name = "FishingCompanions"; runtime.add_child(c)
+	c.call("setup", old.get("game"), old.get("dock"), old.get("hands"))
+	runtime.set("companions", c)
+	if script == COMPANIONS: _swapped.append(runtime)
+	print("[fishing] companions: ", "ponies fish on their own" if script == COMPANIONS else "game's companions restored")
+
 func _exit_tree() -> void:
+	for runtime: Node in _swapped:
+		if is_instance_valid(runtime): _replace_companions(runtime, load(GAME_COMPANIONS))
+	_swapped.clear()
 	_unpatch_tastes()
 	if is_instance_valid(angler_log): angler_log.queue_free()
 	for m in _landmarks: if is_instance_valid(m): m.queue_free()

@@ -73,7 +73,7 @@ func tick(delta: float, tip: Vector3, _sweep: Callable) -> void:
 				water_y = bobber.y; remaining = tip.distance_to(bobber); landed_at = bobber
 				water_kind = TABLE.water_kind(hit.collider)
 				water_depth = _depth_below(bobber)
-				wait_time = rng.randf_range(5.0, 13.0); clock = 0
+				wait_time = _bite_wait(5.0, 13.0); clock = 0
 				_nibbles = []
 				for i in rng.randi_range(0, 2): _nibbles.append(rng.randf_range(1.5, wait_time - 1.0))
 				_set_state("waiting")
@@ -93,7 +93,7 @@ func tick(delta: float, tip: Vector3, _sweep: Callable) -> void:
 			if clock >= wait_time:
 				fish = TABLE.pick(water_kind, water_depth, _hour(), rng, _moon())
 				if fish.is_empty():  # nothing lives here (the sea): try again later
-					clock = 0; wait_time = rng.randf_range(8.0, 15.0)
+					clock = 0; wait_time = _bite_wait(8.0, 15.0)
 				else:
 					clock = 0; _set_state("bite")
 	elif state == "bite":
@@ -102,7 +102,7 @@ func tick(delta: float, tip: Vector3, _sweep: Callable) -> void:
 		bobber.y = water_y - .12 * plunge + sin(clock * 18.0) * .03
 		if tip.y - _rod_last.y > maxf(.045, delta * .65): hook()
 		elif clock > BITE_WINDOW:
-			clock = 0; wait_time = rng.randf_range(6, 14); fish = {}; _set_state("waiting")
+			clock = 0; wait_time = _bite_wait(6.0, 14.0); fish = {}; _set_state("waiting")
 	elif state == "landed":
 		pass  # feedback.gd puts the hook (bobber) at the held fish's mouth
 	elif state == "hooked":
@@ -179,6 +179,14 @@ func _moon() -> float:
 		var tod: Node = rod.get_tree().root.get_node_or_null("TimeOfDay")
 		if tod != null and tod.has_method("moon_lit_fraction"): return float(tod.moon_lit_fraction())
 	return 0.0
+
+## How long until a bite. A pony's rod waits 30 to 60 s (0.7.0: Apple Bloom was catching within
+## seconds of every cast); the player's keeps the quick, cosy wait.
+const PONY_WAIT := Vector2(30.0, 60.0)
+func _bite_wait(lo: float, hi: float) -> float:
+	if is_instance_valid(rod) and not str(rod.get("holder")).is_empty() and str(rod.get("holder")) != "player":
+		return rng.randf_range(PONY_WAIT.x, PONY_WAIT.y)
+	return rng.randf_range(lo, hi)
 
 func _set_state(next: String) -> void:
 	if next == state: return
