@@ -1,6 +1,6 @@
 # Pathfinding Fix
 
-By modChad. Version 1.0.0, for game 0.3.0.
+By modChad. Version 1.1.0, for game 0.3.0.
 
 Ponies pick better routes:
 
@@ -10,6 +10,10 @@ Ponies pick better routes:
 - **Size:** each pony's personal space (crowd avoidance) follows her size setting, filly or stallion.
 - **Celestia:** her height allowance is 1.85 m (was 1.95 m), so she fits through ordinary house
   doors. Luna's stays 1.45 m. Both now scale correctly with the pony size setting.
+- **Inside houses (new in 1.1.0):** in many town houses the roof, attic and porch roof hid the
+  ground floor from the game's pathfinding, so ponies (Celestia most of all) struggled to walk
+  through the door, move around the room, or sit and lie down there. They now count as ceilings,
+  so the room and the doorstep under a porch are walkable. Collision is unchanged.
 
 Quest 3 (standalone) gets a lighter version: road-aware routes up to 80 m with a smaller search
 budget, and the game's own detour limit. On the lowest quality tiers the game's routing stays.
@@ -17,8 +21,11 @@ Made for desktop; Quest support is attempted but not tested.
 
 ## Install
 
-Put `pathfinding-fix-v1.0.0.pck` in your mods folder and start the game. Zones that were already
+Put `pathfinding-fix-v1.1.0.pck` in your mods folder and start the game. Zones that were already
 loaded when you switch it on pick up the route changes the next time they load.
+
+The first time a town loads with 1.1.0 its pathfinding data is rebuilt (kept in a separate cache
+folder, so switching the mod off goes straight back to the game's own).
 
 ## Notes
 

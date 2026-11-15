@@ -13,12 +13,35 @@ extends "res://world/navigation/walk_grid_service.gd"
 ## the game's 128-tile cap (it keeps only 384 tiles resident), and no open search at all on a
 ## quality tier that lowered the game's own search limit (the potato tiers). Searches run on the
 ## native worker threads, not the render or physics thread, but those cores are shared.
+## 3. House ceilings (house_ceilings.gd) change what a column samples, so this service keeps its
+##    disk cache in its own folder (game folder name + CACHE_TAG): chunks the game cached without
+##    the fix are never loaded, and switching the mod off goes back to the game's folder.
 
 const PLANNER_FIX := preload("res://mods/pathfinding_fix/walk_planner_fix.gd")
 const BUDGET_REASON := "Search budget reached"
 const QUEST := {"corridor_off_m": 80.0, "open_limit": 150000, "expand_step": 24, "route_chunks": ROUTE_CHUNKS}
 const DESKTOP := {"corridor_off_m": 200.0, "open_limit": 400000, "expand_step": 32, "route_chunks": ROUTE_CHUNKS * 2}
 var fix: Dictionary = QUEST if OS.has_feature("android") else DESKTOP
+## Bump when house_ceilings.gd changes what is sampled.
+const CACHE_TAG := "_pathfix_ceil1"
+
+
+## The game's setup, then this mod's own cache folder. The game's stale-cache prune only removes
+## folders named zone_<64 hex>, so this one prunes its own older folders the same way.
+func _setup_geometry() -> void:
+	super._setup_geometry()
+	var game_folder := _cache_dir.get_file()
+	_cache_dir += CACHE_TAG
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(_cache_dir.path_join("derived")))
+	var root := ProjectSettings.globalize_path("user://navigation/walkgrid")
+	var before := Time.get_unix_time_from_system() - STALE_CACHE_DAYS * 86400.0
+	var prefix := zone_id + "_"
+	for folder in DirAccess.get_directories_at(root):
+		if not folder.begins_with(prefix) or not folder.ends_with(CACHE_TAG) or folder == game_folder + CACHE_TAG: continue
+		var hex := folder.substr(prefix.length(), folder.length() - prefix.length() - CACHE_TAG.length())
+		if hex.length() != 64 or not hex.is_valid_hex_number(): continue
+		if FileAccess.get_modified_time(root.path_join(folder)) > before: continue
+		WorkerThreadPool.add_task(_remove_tree.bind(root.path_join(folder), _prune_cancel), false, "Pathfinding Fix cache prune")
 
 
 ## True when this route search should use the game's coarse corridor.

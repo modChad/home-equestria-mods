@@ -8,10 +8,13 @@ extends Node
 ##   overwriting any size scaling done before it, and every standard house assumes a 2.0 m doorway
 ##   with 0.1 m to spare, so Celestia never fitted. Clearance is kept at CELESTIA_CLEARANCE /
 ##   LUNA_CLEARANCE times her body scale.
+## - House ceilings (house_ceilings.gd): each town house's roof, attic and porch roofs stop counting
+##   as walkable floor, so the walk grid sees the room and the stoop under them.
 
 const BASE_SERVICE := "res://world/navigation/walk_grid_service.gd"
 const FIX_SERVICE := preload("res://mods/pathfinding_fix/walk_grid_service_fix.gd")
 const PRINCESS := "res://world/characters/princesses/princess_hybrid.gd"
+const CEILINGS := preload("res://mods/pathfinding_fix/house_ceilings.gd")
 const CELESTIA_CLEARANCE := 1.85
 const LUNA_CLEARANCE := 1.45
 ## Seconds between agent/clearance checks.
@@ -23,14 +26,22 @@ var _wait := 0.0
 
 func _ready() -> void:
 	get_tree().node_added.connect(_on_node_added)
+	# Houses already standing when the mod starts.
+	for interior: Node in get_tree().get_nodes_in_group("house_interiors"):
+		if CEILINGS.is_town_house(interior) and interior.is_node_ready(): _on_house_ready(interior)
 
 
 func _exit_tree() -> void:
 	if get_tree().node_added.is_connected(_on_node_added):
 		get_tree().node_added.disconnect(_on_node_added)
+	for box: AABB in CEILINGS.undo_all(get_tree()): _notify_geometry(box)
 
 
 func _on_node_added(node: Node) -> void:
+	if node.get_script() != null and CEILINGS.is_town_house(node) and not node.is_node_ready():
+		# After its _ready: the house edits its own shell collision there.
+		node.ready.connect(_on_house_ready.bind(node), CONNECT_ONE_SHOT)
+		return
 	var script := node.get_script() as Script
 	if script == null or script == FIX_SERVICE or script.resource_path != BASE_SERVICE: return
 	if node.is_node_ready(): return
@@ -39,6 +50,29 @@ func _on_node_added(node: Node) -> void:
 	node.set_script(FIX_SERVICE)
 	for property: String in keep: node.set(property, keep[property])
 	print("[pathfinding_fix] route fixes on %s" % str(keep.get("zone_id", node.name)))
+
+
+func _on_house_ready(interior: Node) -> void:
+	if not is_instance_valid(interior) or not interior.is_inside_tree(): return
+	var box: AABB = CEILINGS.apply(interior as Node3D)
+	if box.size != Vector3.ZERO: _notify_geometry(box)
+
+
+## Resample walk-grid chunks over `box` that a zone already sampled. Chunks not sampled yet need
+## nothing (they will see the split shell), and notify_geometry_changed() would keep them out of
+## the disk cache for the session.
+func _notify_geometry(box: AABB) -> void:
+	box = box.grow(1.0)
+	for service: Node in get_tree().get_nodes_in_group("pony_navigation"):
+		if not (service is WalkGridService) or not service.is_node_ready(): continue
+		var grid: WalkGrid = service.grid
+		var a := WalkGrid.chunk_of(WalkGrid.column(box.position))
+		var b := WalkGrid.chunk_of(WalkGrid.column(box.end))
+		var sampled := false
+		for z in range(a.y, b.y + 1):
+			for x in range(a.x, b.x + 1):
+				if grid.chunks.has(Vector2i(x, z)): sampled = true
+		if sampled: service.notify_geometry_changed(box)
 
 
 func _process(delta: float) -> void:
