@@ -173,6 +173,16 @@ func _resting(pony: Variant) -> bool:
 	return posture is Object and is_instance_valid(posture) and bool(posture.call("active"))
 
 
+## In a bed or seat (seating.gd: his body's seat, or the "seated"/"seating" meta): the mod stays
+## out and the game's own kiss runs, as it did before the mod. Treated like a standing kiss, she
+## was walked, stepped back or reared, stood up, and that ended the cuddle and got them both up.
+func _in_seat() -> bool:
+	var body: Variant = _kisser.get("body") if is_instance_valid(_kisser) else null
+	if not is_instance_valid(body): return false
+	var seat: Variant = (body as Node).get("seat")
+	return (seat is Node and is_instance_valid(seat)) or (body as Node).get_meta("seated", false) or (body as Node).get_meta("seating", false)
+
+
 func _scale_of(pony: Node) -> float:
 	return maxf(1.0, float(pony.get("body_scale"))) if is_instance_valid(pony) and pony.get("body_scale") != null else 1.0
 
@@ -181,6 +191,7 @@ func _scale_of(pony: Node) -> float:
 
 func _can_start() -> bool:
 	if is_instance_valid(_kisser.get("_active")) or _kisser.get("_used_hold") == true: return false
+	if _in_seat(): return false
 	var body: Variant = _kisser.get("body")
 	if is_instance_valid(body) and (body.get("controls_locked") == true or body.get_meta("knocked_down", false)): return false
 	return true
@@ -238,6 +249,7 @@ func _faced_pony(camera: Camera3D) -> Node3D:
 		if not is_instance_valid(pony) or not (pony as Node3D).is_inside_tree() or not (pony as Node3D).is_visible_in_tree(): continue
 		if not pony.has_method("listen_point") or not pony.has_method("kiss_contact_distance"): continue
 		if pony.has_method("is_held") and pony.is_held(): continue
+		if (pony as Node).get_meta("cuddle_active", false): continue
 		var affection: Node = pony.get_node_or_null("Affection")
 		if affection == null or not str(affection.get("kind")).is_empty(): continue
 		var to: Vector3 = pony.listen_point() - camera.global_position
@@ -403,7 +415,6 @@ func after_kisser(delta: float) -> void:
 	var deep: bool = _mine.get("deep") == true
 	var lips: float = _mine.mouth_point().distance_to(mouth) if _mine.has_method("mouth_point") else INF
 	var gap: float = minf(mare.kiss_contact_distance(mouth, forward), lips)
-	_last_gap = gap
 	var held := _held(gap, delta)
 	var body: Variant = _kisser.get("body")
 	if is_instance_valid(body) and (body.get("controls_locked") == true or body.get_meta("knocked_down", false)):
@@ -521,7 +532,6 @@ func _step_back(delta: float) -> void:
 ## its crouch ease follows) is lowered to just above her lips, then put back. A pony taller than
 ## him lowers her own head; he doesn't stretch up.
 const BEND_ABOVE := 0.12 # His eyes this far above her lips.
-const BEND_ABOVE_RESTING := 0.12 # A resting pony (same as standing for now).
 const BEND_MIN := 0.55 # Never lower than a crouch (desktop_player CROUCH_RATIO).
 var _bend_pony: Node3D
 var _stand_eye := -1.0
@@ -532,6 +542,9 @@ func _desktop_bend() -> void:
 	if not is_instance_valid(_kisser) or _kisser.get("controller") != null: return
 	var body: Variant = _kisser.get("body")
 	if not is_instance_valid(body) or body.get("_stand_eye") == null: return
+	if _in_seat():
+		_unbend(body)
+		return
 	var pony: Node3D = _coming
 	if pony == null and is_instance_valid(_coming_rest): pony = _coming_rest
 	if pony == null and is_instance_valid(_mine): pony = _mine.get("mare")
@@ -553,7 +566,7 @@ func _desktop_bend() -> void:
 		var affection: Node = pony.get_node_or_null("Affection")
 		var at: Vector3 = affection.mouth_point() if affection != null and affection.has_method("mouth_point") else pony.listen_point()
 		_bend_lips = at.y - pony.global_position.y
-	var want := pony.global_position.y + _bend_lips - (body as Node3D).global_position.y + (BEND_ABOVE_RESTING if _resting(pony) else BEND_ABOVE)
+	var want := pony.global_position.y + _bend_lips - (body as Node3D).global_position.y + BEND_ABOVE
 	# A deep kiss with a partner: he straightens up and she rises with him, her hooves on his
 	# shoulders (the game's own supported rear at Canon size, rear.gd above it).
 	if _rearing(pony):
@@ -609,11 +622,6 @@ var _bend_to := -1.0
 var _bend_eye := -1.0
 const BEND_EASE := 6.0
 
-## Desktop, a resting pony: she can't step in to him, and her neck alone fell short (13 cm with
-## Celestia sitting), so he leans in (his view eases forward, up to LEAN_MAX) until their lips
-## meet, holds there through the kiss, and leans back after. The body's "kissing_lean" meta says how far.
-const LEAN_MAX := 0.3
-
 ## A resting pony's kiss: the game's kiss turns her body, steps her in or backs her off
 ## (pony_affection.gd _steer), and any of those stands her up; its body_turn and step_after
 ## settings are zeroed while one lasts, then put back.
@@ -630,35 +638,9 @@ func _hold_still(on: bool) -> void:
 		_game_steer = {}
 const LEAN_SPEED := 0.25
 var _desk_lean := 0.0
-var _lean_best := INF
-var _last_gap := INF # Lips gap of the kiss this mod drives, this tick (after_kisser).
-
-func _desktop_lean(delta: float) -> void:
-	var body: Variant = _kisser.get("body")
-	var camera: Variant = _kisser.get("camera")
-	if not is_instance_valid(body) or not camera is Camera3D or _kisser.get("controller") != null: return
-	var mare: Variant = _mine.get("mare") if is_instance_valid(_mine) else null
-	_hold_still(_resting(mare))
-	var want := 0.0
-	if _resting(mare) and not _met:
-		# Lean in while it brings their lips closer; hold once it stops helping (pushing on only
-		# shoved her face away, the guard keeping it off his eyes, or backed her up).
-		var gap := _last_gap
-		if gap < _lean_best - 0.003 or _desk_lean < 0.05:
-			_lean_best = minf(_lean_best, gap)
-			want = LEAN_MAX
-		else: want = _desk_lean
-	elif _resting(mare): want = _desk_lean
-	else: _lean_best = INF
-	_desk_lean = move_toward(_desk_lean, want, LEAN_SPEED * delta)
-	if _desk_lean <= 0.0 and not (body as Node).has_meta("kissing_lean"): return
-	if (camera as Node).get_parent() == body: (camera as Camera3D).position.z = -_desk_lean
-	if _desk_lean > 0.0: (body as Node).set_meta("kissing_lean", _desk_lean)
-	else: (body as Node).remove_meta("kissing_lean")
-
 func after_player(delta: float) -> void:
 	if not is_instance_valid(_kisser): return
-	_desktop_lean(delta)
+	_hold_still(is_instance_valid(_mine) and _resting(_mine.get("mare")))
 	var body: Variant = _kisser.get("body")
 	if _bend_to < 0.0 or not is_instance_valid(body) or body.get("_eye_height") == null:
 		_bend_eye = -1.0
@@ -686,6 +668,7 @@ func _vr_lean(camera: Camera3D, delta: float) -> void:
 	for pony: Variant in _kisser.get("ponies"):
 		if not is_instance_valid(pony) or not (pony as Node3D).is_inside_tree() or not (pony as Node3D).is_visible_in_tree(): continue
 		if pony.has_method("is_held") and pony.is_held(): continue
+		if (pony as Node).get_meta("cuddle_active", false): continue
 		if (pony as Node3D).global_position.distance_to(camera.global_position) > KEEP * _scale_of(pony): continue
 		if pony.kiss_contact_distance(mouth, forward) <= LEAN_REACH:
 			near = pony
@@ -932,7 +915,6 @@ func _guard_tick(mare: Node3D, camera: Camera3D) -> void:
 		if other != null: after = maxi(after, other.get_index())
 	if _guard.get_index() != after + 1 and _guard.get_index() <= after: sk.move_child(_guard, after + 1 if after + 1 < sk.get_child_count() else -1)
 	_guard.set("eye", camera.global_position)
-	_guard.set("relaxed", _resting(mare))
 	_guard.set("active", true)
 
 

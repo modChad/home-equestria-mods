@@ -69,7 +69,14 @@ var as_earth := false
 
 
 ## An earth pony's fidgets (fidgets.gd), on her skeleton after the game's own pose writers.
+## Carried in his arms: no fidgets or wing shiver (they swayed her off his lips and fought the
+## carry pose, so a bridal-carry kiss never landed). Her horn's build-up stays.
+func _carried() -> bool:
+	return mare.has_method("is_held") and bool(mare.is_held())
+
+
 func _fidgets() -> void:
+	if is_instance_valid(_fidget): _fidget.set("active", not _carried())
 	if is_instance_valid(_fidget) or level <= 0.001: return
 	var identity: Variant = mare.get("identity")
 	var earth: bool = identity is Object and identity.has_method("has_wings") and not identity.has_wings() and not (identity.has_method("has_horn") and identity.has_horn())
@@ -97,6 +104,7 @@ func _wings() -> void:
 	if flight == null or not flight.get("wings") is Node: return
 	var sk: Variant = mare.get("skeleton")
 	if not sk is Skeleton3D or not is_instance_valid(sk): return
+	if is_instance_valid(_shiver): _shiver.set("active", not _carried())
 	if not is_instance_valid(_shiver):
 		_shiver = WINGS.new()
 		_shiver.name = "KissingWingShiver"

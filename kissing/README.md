@@ -1,6 +1,6 @@
 # Kissing
 
-- **Version:** 1.2.10
+- **Version:** 1.2.11
 - **Made for:** Home: Equestria 0.3.0-maredev
 - **Works on:** desktop (hold K) and VR (lean in)
 
@@ -68,9 +68,15 @@ Works with Horn Glow 1.1.1.
 
 In VR, leaning in to kiss works again after the first kiss: once the kiss is over and you pull your head back, you can lean in for another. Before, it only worked again after pressing the kiss button or reloading.
 
+## Fixes (1.2.11)
+
+- **In bed (or any seat):** kissing no longer gets you both out of bed. While you're in a bed or seat, the mod stays out of the way and the game's own kiss runs.
+- **Bridal carry:** kissing works again while carrying her. She no longer fidgets or shivers her wings in your arms, which had pulled her lips off yours.
+- **Sitting or lying ponies:** trying to kiss one no longer makes her stand up. (The kiss itself may not reach yet; that's still being worked on.)
+
 ## Install
 
-Put `kissing-v1.2.10.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
+Put `kissing-v1.2.11.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
 
 ## Build from source
 
