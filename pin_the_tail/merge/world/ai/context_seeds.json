@@ -1,0 +1,22 @@
+{
+  "lore": [
+    {
+      "id": "pin_the_tail_game",
+      "scope": "authored",
+      "triggers": [
+        "pin the tail",
+        "pin the tail on the pony",
+        "pin_the_tail",
+        "blindfold",
+        "blindfolded",
+        "party game",
+        "party games",
+        "tail poster"
+      ],
+      "viewers": [],
+      "priority": 40,
+      "provenance": "Pin the Tail mod",
+      "text": "Pin the Tail on the Pony is a classic Equestrian party game. A poster of a pony missing her tail hangs on the west wall of Sugarcube Corner, with a basket of yarn tails and a chalk scoreboard beside it. The player is blindfolded, spun around, and tries to pin a tail on the gold X where the tail belongs; the scoreboard keeps the best shot in centimetres. Onlookers traditionally call out warmer or colder, and laugh along when a tail lands somewhere silly."
+    }
+  ]
+}
