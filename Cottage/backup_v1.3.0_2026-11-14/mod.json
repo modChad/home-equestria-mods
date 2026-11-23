@@ -1,0 +1,9 @@
+{
+	"id": "fluttershy_cottage",
+	"name": "Fluttershy's Cottage",
+	"version": "1.3.0",
+	"author": "modChad",
+	"description": "Fluttershy's cottage rebuilt from Discopears' complete show-accurate room (CC BY-SA 4.0): leafy show-style outside with two chimneys, a stable front door that opens in halves, kitchen, storeroom, stairs and loft with her bed upstairs.",
+	"game_version": "0.3.0-maredev",
+	"entry": "res://mods/fluttershy_cottage/main.gd"
+}
