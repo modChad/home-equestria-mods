@@ -1,0 +1,8 @@
+{
+	"id": "hair_lite",
+	"name": "Lighter Hair",
+	"version": "1.0.0",
+	"author": "modChad",
+	"description": "Every pony's mane and tail with far fewer triangles, for better framerates on Quest 3: the Mane 6 cut to about a quarter (Pinkie 106k to 21k), Anon's pony hair to a third, and any background pony hair part over 6k halved. Same look, rig, colours and tail physics.",
+	"game_version": "0.3.1-maredev"
+}
