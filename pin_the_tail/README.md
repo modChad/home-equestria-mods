@@ -14,5 +14,5 @@ Put `pin-the-tail-v0.4.2.pck` in the game's `mods` folder and switch it on in **
 
 ### 0.4.2
 - Tails are much lighter to draw: 144 triangles and one draw call each, down from about 21,500 triangles and six draw calls. With the most tails out (25), that is about 3,600 triangles instead of about 540,000. Same size, colours and layout.
-- Tails are drawn out to 12 m. Before, pinned and saved tails were never culled.
+- Everything (poster, frame, text, basket, score card and tails) stops drawing past 6 m: it is inside Sugarcube Corner, so nothing needs drawing from outside. Before, the poster drew to 60 m and pinned or saved tails were never culled.
 - Folds in devanon's patch 1.0.0: with the AI off, the mod no longer searches for the AI client every physics tick.

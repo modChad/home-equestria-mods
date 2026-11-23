@@ -210,7 +210,7 @@ func _build(interior: Node, tries: int) -> void:
 	button.add_child(caption)
 
 	for mesh: GeometryInstance3D in _root.find_children("*", "GeometryInstance3D", true, false):
-		if mesh.visibility_range_end <= 0.0: mesh.visibility_range_end = 60.0   # tails keep their own
+		if mesh.visibility_range_end <= 0.0: mesh.visibility_range_end = 6.0   # 0.4.2: was 60 m; it is indoors
 	if Mods.game != null: _restore()
 	_refresh_score()
 	print("[%s] poster hung in Sugarcube Corner" % ID)

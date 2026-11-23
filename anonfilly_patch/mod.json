@@ -1,0 +1,10 @@
+{
+	"id": "anonfilly_patch",
+	"name": "Anonfilly lighter hair",
+	"version": "1.0.0",
+	"author": "modChad",
+	"description": "For Anonfilly (NPC) 1.0.0: her mane and tail with far fewer triangles (mane 23,744 to 7,936, tail 2,016 to 1,280) plus automatic distance LODs, for better framerates on Quest 3. Same look, rig and colours.",
+	"game_version": "0.3.1-maredev",
+	"patches": {"anonfilly": "1.0.0"},
+	"extends": ["res://mods/anonfilly_patch/ext/main.gd"]
+}

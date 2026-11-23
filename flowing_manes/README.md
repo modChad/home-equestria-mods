@@ -1,8 +1,8 @@
 # Flowing Manes
 
-- **Version:** 1.0.0
+- **Version:** 1.0.1
 - **By:** modChad
-- **Made for:** Home: Equestria 0.3.0-maredev
+- **Made for:** Home: Equestria 0.3.1-maredev
 - **Works on:** desktop and VR (nothing to press)
 
 Princess Celestia's and Princess Luna's manes and tails flow and ripple, with twinkling sparkles (Celestia) and slowly drifting stars and a soft glowing edge (Luna).
@@ -19,7 +19,7 @@ Princess Celestia's and Princess Luna's manes and tails flow and ripple, with tw
 
 ## Install
 
-Put `flowing-manes-v1.0.0.pck` in the game's `mods` folder and switch it on in **Settings → Mods**. It switches on and off straight away; switched off, the hair goes back to the game's own look.
+Put `flowing-manes-v1.0.1.pck` in the game's `mods` folder and switch it on in **Settings → Mods**. It switches on and off straight away; switched off, the hair goes back to the game's own look. 1.0.1 replaces the bundled 1.0.0 and its devanon warm-up patch (now built in).
 
 ## Build from source
 
@@ -28,3 +28,10 @@ Copy this folder into `res://mods/flowing_manes/` in the game project, then run 
 ## Things to know
 
 - Only Celestia and Luna are changed. No game file is replaced.
+
+## Changes
+
+### 1.0.1
+- In VR the effect fades out when a princess is more than 12 m from you, and back in as you approach.
+- A princess whose effect has fully faded out (far away, or out of range in VR) no longer costs anything each frame.
+- Folds in devanon's warm-up patch 1.0.0: the hair shaders are compiled behind the loading screen, so the first sight of Celestia or Luna doesn't stutter.

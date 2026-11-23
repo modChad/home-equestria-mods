@@ -14,6 +14,10 @@ const PRINCESS := "res://world/characters/princesses/princess_hybrid.gd"
 const SHADERS := preload("res://mods/flowing_manes/wave_shader.gd")
 const SWAY := preload("res://mods/flowing_manes/tail_sway.gd")
 const FADE_SECONDS := 1.5
+## 1.0.1: in VR the effect fades out beyond this many metres from the headset (the game's far tier
+## still fades it everywhere). Faded right out, a princess costs nothing per frame.
+const VR_FADE_AT := 12.0
+const WARMUP := preload("res://mods/flowing_manes/warmup.gd")
 const CHECK_EVERY := 0.5
 
 ## Per princess at the "show" preset: wave amplitude as a share of the hair's length, speed
@@ -89,6 +93,9 @@ func _ready() -> void:
 	Mods.on_node(PRINCESS, _track)
 	_ui = SETTINGS_UI.new(self)
 	Mods.on_node("res://world/ui/settings_page.gd", _ui.attach)
+	var warmup := WARMUP.new()
+	warmup.name = "Warmup"
+	add_child(warmup)
 
 
 func defaults() -> Dictionary:
@@ -149,15 +156,26 @@ func _process(delta: float) -> void:
 	_check -= delta
 	var recheck := _check <= 0.0
 	if recheck: _check = CHECK_EVERY
+	var vr := get_viewport() != null and get_viewport().use_xr
+	var head := _viewer() if vr else Vector3.INF
 	for pony: Variant in _ponies.keys():
 		if not is_instance_valid(pony): _ponies.erase(pony); continue
 		var row: Dictionary = _ponies[pony]
 		# A re-dress (shading version, rebuilt model) puts the game's materials back.
 		if recheck and _enabled(pony) and _needs_apply(row): _apply(pony)
 		var far: bool = pony.get(&"sim_tier") != null and int(pony.get(&"sim_tier")) >= 2
+		if not far and head.is_finite() and (pony as Node3D).global_position.distance_squared_to(head) > VR_FADE_AT * VR_FADE_AT: far = true
 		var goal := 0.0 if far else strength
 		row.amount = move_toward(float(row.amount), goal, delta / FADE_SECONDS)
 		if row.surfaces.is_empty() and not is_instance_valid(row.sway): continue
+		# Faded right out: one last push at 0 (her own colours, sway off), then nothing until she
+		# fades back in. Her movement starts afresh then, so the time away is not read as a step.
+		if float(row.amount) <= 0.0 and goal <= 0.0:
+			if bool(row.get("parked", false)): continue
+			row.parked = true
+			row.last_pos = Vector3.INF
+		else:
+			row.parked = false
 		_feel(pony, row, delta)
 		_move(pony, row, delta)
 		_drive(pony, row)

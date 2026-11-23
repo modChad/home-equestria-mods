@@ -119,8 +119,8 @@ static func material(hex: String, unshaded := false) -> StandardMaterial3D:
 	return mat
 
 
-## How far away a tail is still drawn (metres). They are small and the room is small.
-const TAIL_RANGE := 12.0
+## How far away a tail is still drawn (metres). Indoors: nothing to see from outside the bakery.
+const TAIL_RANGE := 6.0
 ## Tail looks made once and shared by every tail (seed picks one): strands differ in length and fan.
 const TAIL_VARIANTS := 4
 const TAIL_COLOURS := ["ff9f8c", "ffd36e", "e0705c", "ff9f8c", "ffd36e"]
@@ -135,7 +135,7 @@ static var _tail_material: StandardMaterial3D
 ## pinned to and the strands hang down local -y.
 ## 0.4.2: one shared low-poly mesh (144 triangles, vertex coloured, one material) instead of a
 ## 64-segment sphere and five 64-segment capsules each with its own material (~21,500 triangles and
-## six draw calls a tail). Same size, colours and layout; drawn out to TAIL_RANGE.
+## six draw calls a tail). Same size, colours and layout; drawn out to TAIL_RANGE (6 m).
 static func make_tail(seed_value: int) -> Node3D:
 	if _tail_meshes.is_empty():
 		for v in TAIL_VARIANTS: _tail_meshes.append(_build_tail_mesh(1000 + v * 7919))
