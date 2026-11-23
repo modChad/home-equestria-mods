@@ -15,6 +15,7 @@ func _init() -> void:
 	f.close()
 	var files := {MOD + "mod.json": ProjectSettings.globalize_path(MOD + "mod.json"), MOD + "mod.built.json": stamp}
 	_walk(STAGE, files)
+	if files.size() <= 2: printerr("MOD_BUILD_FAILED nothing staged in ", STAGE); quit(1); return
 	var packer := PCKPacker.new()
 	if packer.pck_start(out) != OK: printerr("MOD_BUILD_FAILED cannot write ", out); quit(1); return
 	var paths := files.keys(); paths.sort()
@@ -25,6 +26,9 @@ func _init() -> void:
 	quit()
 
 func _walk(dir: String, files: Dictionary) -> void:
-	for d in DirAccess.get_directories_at(dir): _walk(dir + d + "/", files)
-	for name in DirAccess.get_files_at(dir):
+	# include_hidden: the imported scenes live under .godot/imported/
+	var d := DirAccess.open(dir)
+	d.include_hidden = true
+	for sub in d.get_directories(): _walk(dir + sub + "/", files)
+	for name in d.get_files():
 		files["res://" + (dir + name).trim_prefix(STAGE)] = ProjectSettings.globalize_path(dir + name)

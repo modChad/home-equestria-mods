@@ -1,0 +1,8 @@
+{
+	"id": "optimare",
+	"name": "Optimare",
+	"version": "1.0.0",
+	"author": "modChad",
+	"description": "General performance tweaks for the game's own models, for better framerates on Quest 3. 1.0.0: Celestia and Luna. Celestia's shoes cut to a quarter (14,336 to 3,840 triangles); both princesses' folded and open wings, crowns and collars roughly halved. Same look.",
+	"game_version": "0.3.1-maredev"
+}

@@ -32,8 +32,5 @@ Put `hair-lite-v1.0.0.pck` in the game's `mods` folder and switch it on in **Set
 
 ## Building
 
-`mods/build_packs.sh` can't build this one (it only packs a mod's own folder). From the project root:
-
-1. `godot --headless --xr-mode off --path . --script res://mods/hair_lite/tools/reduce_hair.gd -- <absolute path to mods/hair_lite/tools/hair_list.txt>` (writes `build/hair_lite/stage/`)
-2. `godot --headless --xr-mode off --path . --script res://mods/hair_lite/tools/pack.gd -- <absolute path to mods/release_packs/hair-lite-v1.0.0.pck>`
-3. `python3 mods/update_readme.py`
+1. From the project root: `godot --headless --xr-mode off --path . --script res://mods/hair_lite/tools/reduce_hair.gd -- <absolute path to mods/hair_lite/tools/hair_list.txt>` (writes `build/hair_lite/stage/`).
+2. `mods/build_packs.sh hair_lite` (packs with `tools/pack.gd`).

@@ -23,6 +23,14 @@ for id in "${ids[@]}"; do
 	version="$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' "$manifest" 2>/dev/null | sed 's/.*"\([^"]*\)"$/\1/')"
 	if [ -z "$version" ]; then echo "FAILED  $id (no version in $id/mod.json)"; failed=1; continue; fi
 	name="${id//_/-}-v$version.pck"
+	# Game-file replacers (hair_lite, optimare) pack with their own tools/pack.gd, from the files their
+	# tools/reduce*.gd script staged in build/<id>/stage/ (run that first; see the mod's README).
+	if [ -f "$MODS/$id/tools/pack.gd" ]; then
+		if [ ! -d "$PROJECT/build/$id/stage" ]; then echo "FAILED  $id (no build/$id/stage: run its tools/reduce script first)"; failed=1; continue; fi
+		cmd=("$GODOT" --headless --xr-mode off --path "$PROJECT" --script "res://mods/$id/tools/pack.gd" -- "$OUT/$name")
+	else
+		cmd=("$GODOT" --headless --xr-mode off --path "$PROJECT" --script res://tools/modding/build_mod.gd -- "$id" --out "$OUT/$name")
+	fi
 	# Older packs out of the mod's folder while it builds.
 	mkdir -p "$ASIDE/$id"
 	moved=()
@@ -30,10 +38,10 @@ for id in "${ids[@]}"; do
 		[ -e "$old" ] || continue
 		if mv "$old" "$ASIDE/$id/"; then moved+=("$(basename "$old")"); else echo "FAILED  $id (cannot move $(basename "$old") out of the way)"; failed=1; continue 2; fi
 	done
-	if "$GODOT" --headless --xr-mode off --path "$PROJECT" --script res://tools/modding/build_mod.gd -- "$id" --out "$OUT/$name" 2>&1 | grep -q '^MOD_BUILT'; then
+	if "${cmd[@]}" 2>&1 | grep -q '^MOD_BUILT'; then
 		echo "built   mods/release_packs/$name"
 	else
-		echo "FAILED  $id (run the build_mod.gd command by hand to see why)"; failed=1
+		echo "FAILED  $id (run its build command by hand to see why)"; failed=1
 	fi
 	for old in "${moved[@]}"; do mv "$ASIDE/$id/$old" "$MODS/$id/$old"; done
 	rmdir "$ASIDE/$id" 2>/dev/null
