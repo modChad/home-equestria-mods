@@ -6,6 +6,8 @@ extends Node
 ##   idle <name> <pony>        plays it on that pony ("idle shoe celestia")
 ##   idle run_all [pony]       plays every idle on her in turn, 2 s apart
 ##   idle stop [pony]          stops the idle playing on her (and a run_all)
+##   idle excite [pony]        excites her as her AI's [excited] tag does, so Idle Life's own
+##                             trigger decides on the tippy-taps; says what happened
 ## Idles started here play to their end: nothing interrupts them.
 ##
 ## It joins the console after any other mod that hooks it (Teleport does, for tp and places):
@@ -15,7 +17,7 @@ extends Node
 const CONSOLE := "res://world/debug/command_console.gd"
 const IDLE_LIFE := "res://mods/idle_life/main.gd"
 const IDLES := "res://mods/idle_life/idles.gd"
-const HELP := "idle list | idle <name> [pony] | idle run_all [pony] | idle stop [pony] — play an Idle Life idle on the pony you're looking at (or a named one)"
+const HELP := "idle list | idle <name> [pony] | idle run_all [pony] | idle stop [pony] | idle excite [pony] — play an Idle Life idle on the pony you're looking at (or a named one)"
 ## Frames to wait after the console's input line appears, so other mods hook it first.
 const AFTER := 8
 ## How far, and how far off the middle of the view, a pony counts as the one you're looking at.
@@ -139,6 +141,7 @@ func run(console: Node, line: String) -> String:
 		return "Stopped %s's idle%s." % [name, " and her run_all" if was_running else ""]
 	# Any other idle command for her ends a run_all she's in.
 	_runs.erase(pony)
+	if what == "excite": return await _excite(mod, pony)
 	if what == "run_all":
 		_run_count += 1
 		_runs[pony] = _run_count
@@ -174,6 +177,35 @@ func _run_all(console: Node, mod: Node, pony: Node3D, names: Array, run: int) ->
 	if not _running(pony, run, mod): return
 	_runs.erase(pony)
 	_say(console, "%s: run_all done%s." % [name, (", skipped " + ", ".join(skipped)) if not skipped.is_empty() else ""])
+
+
+## `idle excite`: excited for 4 s, as her AI's [excited] tag does (excitement.gd spread()). Not a
+## forced idle: Idle Life's own trigger decides, and this reports whether she did the tippy-taps
+## and, if not, the likely reason.
+func _excite(mod: Node, pony: Node3D) -> String:
+	var name := _name(pony)
+	var excitement: Variant = pony.get("excitement")
+	if not excitement is Node or not excitement.has_method("spread"): return "%s has no excitement to show." % name
+	var rows_now: Dictionary = mod.get("_rows")
+	if rows_now.has(pony) and str(rows_now[pony].idle) == "tippy_taps": return "%s is already doing her tippy-taps." % name
+	var taps_was: Variant = (mod.get("_taps_at") as Dictionary).get(pony) if mod.get("_taps_at") is Dictionary else null
+	var already: bool = excitement.has_method("excited") and bool(excitement.excited())
+	if not bool(excitement.spread()): return "%s couldn't get excited (flying?)." % name
+	if already: return "%s was already excited: the tippy-taps only start as an excited spell begins. Try again once she has calmed down." % name
+	for i in 10:
+		await get_tree().create_timer(0.1).timeout
+		if not is_instance_valid(pony) or not is_instance_valid(mod): return ""
+		var rows: Dictionary = mod.get("_rows")
+		var taps_now: Variant = (mod.get("_taps_at") as Dictionary).get(pony) if mod.get("_taps_at") is Dictionary else null
+		if rows.has(pony) and str(rows[pony].idle) == "tippy_taps" and taps_now != taps_was: return "%s got excited: tippy-taps!" % name
+	var consts: Dictionary = (mod.get_script() as Script).get_script_constant_map()
+	var gap := float(consts.get("TAPS_GAP", 0.0))
+	var at: Variant = (mod.get("_taps_at") as Dictionary).get(pony) if mod.get("_taps_at") is Dictionary else null
+	if at != null and (Time.get_ticks_msec() - int(at)) / 1000.0 < gap + 1.0:
+		return "%s got excited, but did her tippy-taps %d s ago (at most one every %d s)." % [name, int((Time.get_ticks_msec() - int(at)) / 1000.0), int(gap)]
+	var due: Variant = (mod.get("_taps_due") as Dictionary).get(pony) if mod.get("_taps_due") is Dictionary else null
+	if due == false: return "%s got excited, but no tippy-taps this time (kissed, or busy with a sitting, lying or flying idle)." % name
+	return "%s got excited, but isn't free to stomp: walking, sitting or lying, held, cuddled, seated, asleep, flying or a hoof busy." % name
 
 
 func _running(pony: Variant, run: int, mod: Node) -> bool:

@@ -8,6 +8,13 @@ extends SkeletonModifier3D
 const IDLES := preload("res://mods/idle_life/idles.gd")
 
 var mare: Node3D
+## Where (world) a forehoof should reach, and how much (0..1), set by main.gd each frame (the hoof
+## forelock sweep); `reach_leg` "_L" or "_R". The leg is turned toward it after the idle's own turns.
+var reach_to := Vector3.INF
+var reach_weight := 0.0
+var reach_leg := "_R"
+## Hind leg instead (the ear scratch): its hoof, swung from the hock, the stifle and the hip.
+var reach_hind := false
 var idle := ""
 var side := 1.0
 var time := 0.0
@@ -38,11 +45,18 @@ func _process_modification_with_delta(_delta: float) -> void:
 	var ground := {}
 	if plant:
 		for sole: String in HIND_SOLES + FRONT_SOLES: ground[sole] = _at(sk, sole)
-	for turn: Array in IDLES.turns(idle, time, side):
+	var free: Array = IDLES.FREE_BONES.get(idle, []) + IDLES.FREE_NECK.get(idle, [])
+	for turn: Array in IDLES.turns(idle, time, side, mare):
 		var bone := _bone(sk, str(turn[0]))
 		if bone < 0: continue
 		var trim := tip_trim if plant and str(turn[0]) in IDLES.TIP_BONES and turn[1] == "pitch" else 1.0
-		_turn(sk, bone, Vector3(axes[turn[1]]), deg_to_rad(float(turn[2])) * fade * trim)
+		_turn(sk, bone, Vector3(axes[turn[1]]), deg_to_rad(float(turn[2])) * fade * trim, str(turn[0]) in free)
+	if reach_weight > 0.001 and reach_to.is_finite(): _reach_hoof(sk, reach_to, reach_weight * fade)
+	for turn: Array in IDLES.after_reach(idle, time, side):
+		var after := _bone(sk, str(turn[0]))
+		if after >= 0: _turn(sk, after, Vector3(axes[turn[1]]), deg_to_rad(float(turn[2])) * fade, true)
+	var shift := IDLES.hips_shift(idle, time) * fade
+	if shift.length() > 0.0001: _shift_hips(sk, shift)
 	if idle == "preen": _bring_wing(sk, IDLES.wing_amount(time) * fade)
 	var lift := IDLES.wing_lift(idle, time)
 	if lift.x > 0.001:
@@ -195,6 +209,48 @@ func _turn(sk: Skeleton3D, bone: int, axis: Vector3, angle: float, free := false
 	if _limited and not free and (_limits.joints as Dictionary).has(bone):
 		q = (_limits.constrain(bone, Basis(q)) as Basis).get_rotation_quaternion()
 	sk.set_bone_pose_rotation(bone, q)
+
+
+## Her whole body moved by `shift` (metres at size 1: x her right, y up, z forward; skeleton space,
+## so it scales with her size): the tippy-taps' bounce, the angry stamp's dip, the surprised hop.
+## Her hooves go with it, so it stays a few centimetres.
+func _shift_hips(sk: Skeleton3D, shift: Vector3) -> void:
+	var hips := _bone(sk, "pony_hips")
+	if hips < 0: return
+	var b := mare.global_basis.orthonormalized()
+	var world := b.x * shift.x + b.y * shift.y - b.z * shift.z
+	var local := sk.global_basis.orthonormalized().inverse() * world
+	var parent := sk.get_bone_parent(hips)
+	var to_local := sk.get_bone_global_pose(parent).basis.inverse() if parent >= 0 else Basis.IDENTITY
+	sk.set_bone_pose_position(hips, sk.get_bone_pose_position(hips) + to_local * local)
+
+
+## The forehoof brought toward `target` (world): a few passes turning the elbow, the shoulder joint
+## and the shoulder blade
+## in turn, each so the hoof points more at the target (past the joint limits, like the rest of the
+## sweep), blended in by `weight`.
+const REACH_PASSES := 4
+func _reach_hoof(sk: Skeleton3D, target: Vector3, weight: float) -> void:
+	var tip := _bone(sk, ("pony_hoof%s_end" if reach_hind else "pony_finger%s_end") % reach_leg)
+	if tip < 0: return
+	var goal := sk.global_transform.affine_inverse() * target
+	var chain := ["pony_legLower" + reach_leg, "pony_tibia" + reach_leg, "pony_femur" + reach_leg] if reach_hind \
+		else ["pony_lowerArm" + reach_leg, "pony_upperArm" + reach_leg, "pony_shoulder" + reach_leg]
+	if reach_hind: chain.append("pony_flank" + reach_leg)
+	for pass_i in REACH_PASSES:
+		for name: String in chain:
+			var bone := _bone(sk, name)
+			if bone < 0: continue
+			var joint := sk.get_bone_global_pose(bone).origin
+			var to_tip := sk.get_bone_global_pose(tip).origin - joint
+			var to_goal := goal - joint
+			if to_tip.length() < 0.001 or to_goal.length() < 0.001: continue
+			var turn := Quaternion(to_tip.normalized(), to_goal.normalized())
+			turn = Quaternion.IDENTITY.slerp(turn, weight)
+			var parent := sk.get_bone_parent(bone)
+			var parent_rotation := sk.get_bone_global_pose(parent).basis.get_rotation_quaternion() if parent >= 0 else Quaternion.IDENTITY
+			var global := parent_rotation * sk.get_bone_pose_rotation(bone)
+			sk.set_bone_pose_rotation(bone, (parent_rotation.inverse() * turn * global).normalized())
 
 
 func _at(sk: Skeleton3D, name: String) -> Vector3:

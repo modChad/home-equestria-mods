@@ -24,6 +24,9 @@ const POSE_READER := preload("res://mods/idle_life/pose_reader.gd")
 const SCROLL := preload("res://mods/idle_life/scroll.gd")
 const TEA := preload("res://mods/idle_life/tea.gd")
 const SHOE := preload("res://mods/idle_life/shoe.gd")
+const TUFT := preload("res://mods/idle_life/tuft.gd")
+const SFX := preload("res://mods/idle_life/sfx.gd")
+const SOUNDS := preload("res://world/audio/interaction_sounds.gd")
 ## How long before looking again for a fringe not found (milliseconds).
 const FRINGE_RETRY_MS := 30000
 ## Ponies who never brush their manes (canonically not the sort), or have no fringe to brush.
@@ -77,6 +80,10 @@ func _physics_process(delta: float) -> void:
 	if _scan <= 0.0:
 		_scan = SCAN
 		_pick(SCAN)
+	_taps_scan -= delta
+	if _taps_scan <= 0.0:
+		_taps_scan = TAPS_SCAN
+		_excitement()
 	for pony: Variant in _rows.keys(): _advance(pony, delta)
 
 
@@ -95,6 +102,9 @@ func _pick(step: float) -> void:
 	for pony: Variant in _ponies():
 		if not is_instance_valid(pony) or not pony is Node3D or _rows.has(pony): continue
 		if not _waits.has(pony): _waits[pony] = _rng.randf_range(FIRST_WAIT.x, FIRST_WAIT.y)
+		if _sitting(pony) and _free(pony, true):
+			_sit_pick(pony, step)
+			continue
 		if not _free(pony):
 			_waits[pony] = maxf(float(_waits[pony]), 3.0)
 			continue
@@ -113,6 +123,271 @@ func _free(pony: Node3D, resting := false) -> bool:
 	var hoof: Variant = pony.get("hoof_hold")
 	if hoof != null and hoof.has_method("active") and bool(hoof.active()): return false
 	return true
+
+
+## Manes hung from her chest and head with no neck bone (2026-11-24, every mane checked: only these
+## two): bent at the neck, the hair hinges where the chest part meets the head part. While any of
+## Idle Life's idles plays on them, the chest part rides with her skull too, so the mane turns
+## as one piece. The game's hair link only lets the chest follow 60% (FOLLOW_SHARE), so its
+## follow_head is set to 1 / 0.6; the neck share past 1 moves no hair on these manes.
+const CHEST_MANES := ["fluttershy", "applejack"]
+const CHEST_FOLLOW := 1.0 / 0.6
+func _chest_mane(pony: Node3D) -> bool:
+	var identity: Variant = pony.get("identity")
+	return identity != null and str(identity.get("id")) in CHEST_MANES
+
+
+func _mane_follow(pony: Node3D, row: Dictionary, fade: float) -> void:
+	if not _chest_mane(pony): return
+	var link: Variant = pony.get("hair_link")
+	if link == null: return
+	link.set("follow_head", CHEST_FOLLOW * clampf(fade, 0.0, 1.0) * IDLES.envelope(float(row.time), IDLES.length(row.idle), 0.3, 0.3))
+	row.followed = true
+
+
+## The hoof forelock sweep's reach: her hoof aimed at her own forelock, moving along its stroke
+## from her brow up and out over each sweep (fringe.gd strokes run top to brow), and a little in
+## front of it (FRINGE_OUT, metres at size 1) so the hoof rides on the hair, not in it.
+const FRINGE_OUT := 0.06   # was 0.025: the hoof sank into Fluttershy's mane curtain (2026-11-24)
+func _reach_fringe(pony: Node3D, row: Dictionary, t: float) -> void:
+	var pose: Variant = row.get("pose")
+	if not is_instance_valid(pose): return
+	var fringe := _fringe(pony)
+	var strokes: Variant = fringe.get("strokes")
+	if not strokes is Dictionary or (strokes as Dictionary).is_empty(): return
+	var key: Variant = float(row.side) if (strokes as Dictionary).has(float(row.side)) else (strokes as Dictionary).keys()[0]
+	var stroke: Array = strokes[key]
+	# Along the stroke: brow (its end) to top (its start), once per sweep.
+	var along := 1.0
+	var sweeps := IDLES.FRINGE_SWEEPS
+	# Only the lower part of her forelock (FRINGE_LOW of the way down to her brow): a small tuck
+	# keeps her mane from hinging (2026-11-24: most manes hang from one chest bone and one head bone).
+	if t > sweeps.x and t < sweeps.y: along = 1.0 - fposmod((t - sweeps.x) / (sweeps.y - sweeps.x) * 2.0, 1.0)
+	along = lerpf(IDLES.FRINGE_LOW, 1.0, along)
+	var at := along * (stroke.size() - 1)
+	var i := clampi(floori(at), 0, stroke.size() - 2)
+	var a := FRINGE.spot(pony, stroke[i])
+	var b := FRINGE.spot(pony, stroke[i + 1])
+	var point := a.lerp(b, at - i)
+	var middle := FRINGE.centre(pony)
+	point += (point - middle).normalized() * FRINGE_OUT * _size(pony)
+	pose.set("reach_leg", "_R" if float(row.side) > 0.0 else "_L")
+	pose.set("reach_to", point)
+	pose.set("reach_weight", IDLES.fringe_reach(t))
+	# The back of her mane rides with her skull while her head is tucked (the game's own fix for a
+	# head tipped far back when bridal carried, hybrid_hair_link.gd follow_head), else it stands up
+	# over the bend in a hump (2026-11-24).
+	if not _chest_mane(pony):
+		var link: Variant = pony.get("hair_link")
+		if link != null:
+			link.set("follow_head", IDLES.FRINGE_FOLLOW * IDLES.fringe_tuck(t) * float(row.fade))
+			row.followed = true
+
+
+## Grazing only on grass (the game's own ground check, ground_contact_audio.gd, where her muzzle
+## will go down: a little ahead of her chest).
+func _on_grass(pony: Node3D) -> bool:
+	var contact: Variant = load(SFX.CONTACT) if ResourceLoader.exists(SFX.CONTACT) else null
+	if contact == null: return false
+	var at := pony.global_position - pony.global_basis.z.normalized() * 0.5 * _size(pony)
+	return str(contact.call("material", pony, at, get_tree().get_first_node_in_group("weather"))) == "grass"
+
+
+## Sitting by herself (the game's own sit, settled), not lying down.
+func _sitting(pony: Node3D) -> bool:
+	var posture: Variant = pony.get("posture")
+	if not posture is RefCounted: return false
+	return str(posture.get("kind")) == "sit" and str(posture.get("requested")) == "sit" and bool(posture.call("settled"))
+
+
+## The ear scratch: earth ponies (no horn, no wings).
+func _ear_scratch_ok(pony: Node3D, _now := false) -> bool:
+	if _princess(pony) or _winged(pony): return false
+	var identity: Variant = pony.get("identity")
+	return identity != null and not (identity.has_method("has_horn") and bool(identity.has_horn()))
+
+
+## Idles for a pony sitting by herself (IDLES.SEATED): far less often than the standing ones,
+## every SIT_WAIT seconds or so, and only SIT_CHANCE of those times.
+const SIT_WAIT := Vector2(45.0, 120.0)
+const SIT_CHANCE := 0.5
+var _sit_waits: Dictionary = {}
+func _sit_pick(pony: Node3D, step: float) -> void:
+	if not _sit_waits.has(pony):
+		_sit_waits[pony] = _rng.randf_range(SIT_WAIT.x, SIT_WAIT.y)
+		pony.tree_exiting.connect(func() -> void: _sit_waits.erase(pony), CONNECT_ONE_SHOT)
+	_sit_waits[pony] = float(_sit_waits[pony]) - step
+	if float(_sit_waits[pony]) > 0.0: return
+	_sit_waits[pony] = _rng.randf_range(SIT_WAIT.x, SIT_WAIT.y)
+	if _rng.randf() < SIT_CHANCE and _ear_scratch_ok(pony): play(pony, "ear_scratch")
+
+
+## The ear scratch's reach: her hind hoof behind the ear on its side (her head rig's
+## mFaceEar1Left/Right), a little behind and out from it, stroking up and down while she scratches.
+const EAR_BEHIND := 0.03
+const EAR_OUT := 0.02
+const EAR_STROKE := 0.02
+func _reach_ear(pony: Node3D, row: Dictionary, t: float) -> void:
+	var pose: Variant = row.get("pose")
+	if not is_instance_valid(pose): return
+	var head_node: Variant = pony.get("head")
+	var hk: Skeleton3D = head_node.get("skeleton") if head_node != null else null
+	if hk == null: return
+	var b := pony.global_basis.orthonormalized()
+	var right := b.x * float(row.side)
+	var ear := Vector3.INF
+	for name: String in ["mFaceEar1Left", "mFaceEar1Right"]:
+		var bone := hk.find_bone(name)
+		if bone < 0: continue
+		var at := hk.global_transform * hk.get_bone_global_pose(bone).origin
+		if not ear.is_finite() or (at - pony.global_position).dot(right) > (ear - pony.global_position).dot(right): ear = at
+	if not ear.is_finite(): return
+	var size := _size(pony)
+	var head := _bone_at(pony, "pony_head")
+	var out := (ear - head).normalized()
+	var point := ear + b.z * EAR_BEHIND * size + out * EAR_OUT * size
+	point += b.y * EAR_STROKE * size * IDLES.scratch_stroke(t) * IDLES.scratching(t)
+	pose.set("reach_leg", "_R" if float(row.side) > 0.0 else "_L")
+	pose.set("reach_hind", true)
+	pose.set("reach_to", point)
+	pose.set("reach_weight", IDLES.scratch_leg(t))
+
+
+## The hoof forelock sweep: earth ponies and pegasi with a forelock found, and no hat on.
+func _hoof_fringe_ok(pony: Node3D) -> bool:
+	var identity: Variant = pony.get("identity")
+	if identity == null or _princess(pony): return false
+	if identity.has_method("has_horn") and bool(identity.has_horn()): return false
+	if _hatted(pony) or str(identity.get("id")) in NO_HOOF_FRINGE: return false
+	return _fringe(pony).has("strokes")
+
+
+## Left out of the forelock sweep (dev 2026-11-24): Fluttershy's long curtain mane swallows the hoof.
+const NO_HOOF_FRINGE := ["fluttershy"]
+
+
+## Reseating her hat: earth ponies and pegasi wearing one.
+func _hoof_hat_ok(pony: Node3D) -> bool:
+	var identity: Variant = pony.get("identity")
+	if identity == null or _princess(pony): return false
+	if identity.has_method("has_horn") and bool(identity.has_horn()): return false
+	return _hatted(pony)
+
+
+## Her hat as a rigid piece Idle Life can tip (Applejack's: a mesh ending "Hat" on her hair rig, not
+## skinned); null for hats skinned to her (the wardrobe's), part of her mane (Daring Do's), or merged
+## into her near hair mesh (Braeburn's: background ponies' near meshes bake the hat in, 2026-11-24).
+func _hat_node(pony: Node3D) -> MeshInstance3D:
+	for mi: Node in pony.find_children("*Hat", "MeshInstance3D", true, false):
+		var mesh := mi as MeshInstance3D
+		if mesh.skin == null and mesh.is_visible_in_tree() and not String(mesh.name).contains("LOD"): return mesh
+	return null
+
+
+## Her hat's front brim, in the hat mesh's own space: its vertices ahead of the middle of the hat
+## and in its lowest BRIM_BAND of height (the brim, not the crown), seen from her.
+const BRIM_BAND := 0.4
+func _brim_points(pony: Node3D, hat: MeshInstance3D) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	if hat.mesh == null: return out
+	var to_pony := pony.global_transform.affine_inverse() * hat.global_transform
+	var all := PackedVector3Array()
+	for si in hat.mesh.get_surface_count():
+		var arrays := hat.mesh.surface_get_arrays(si)
+		all.append_array(arrays[Mesh.ARRAY_VERTEX])
+	if all.is_empty(): return out
+	var low := INF; var high := -INF; var mid := 0.0
+	for v: Vector3 in all:
+		var p := to_pony * v
+		low = minf(low, p.y); high = maxf(high, p.y); mid += p.z
+	mid /= all.size()
+	for i in range(0, all.size(), maxi(1, all.size() / 600)):
+		var p := to_pony * all[i]
+		# Her forward is -z.
+		if p.z < mid and p.y <= low + (high - low) * BRIM_BAND: out.append(all[i])
+	return out
+
+
+## Reseating her hat: the hat tipped up and back about the back of its brim (HAT_TILT degrees,
+## HAT_LIFT metres at size 1) as the hoof pushes it, the hoof aimed at the front of the brim
+## (from the hat's own box where there is a hat piece, else above her brow).
+const HAT_TILT := 16.0
+const HAT_LIFT := 0.025
+## How far under the brim (metres at size 1) the hoof pushes.
+const HAT_UNDER := 0.012
+## How far out along the brim (0 the hat's middle .. 1 its front edge) the hoof takes it.
+static var HAT_FRONT := 0.4   # further out the hoof could not reach Applejack's wide brim
+func _reach_hat(pony: Node3D, row: Dictionary, t: float) -> void:
+	var pose: Variant = row.get("pose")
+	if not is_instance_valid(pose): return
+	var size := _size(pony)
+	var b := pony.global_basis.orthonormalized()
+	var forward := -b.z
+	var right := b.x * float(row.side)
+	var tip := IDLES.hat_tip(t) * float(row.fade)
+	var point := Vector3.INF
+	var hat: Variant = row.get("hat")
+	if hat is MeshInstance3D and is_instance_valid(hat):
+		var mesh := hat as MeshInstance3D
+		mesh.transform = row.hat_from
+		var box := mesh.global_transform * mesh.get_aabb()
+		var centre := box.get_center()
+		var front := 0.0; var back := 0.0; var low := INF
+		for i in 8:
+			var corner := box.get_endpoint(i)
+			front = maxf(front, (corner - centre).dot(forward))
+			back = minf(back, (corner - centre).dot(forward))
+			low = minf(low, corner.y)
+		if tip > 0.001:
+			# About the back of the brim, around her right: the front comes up.
+			var pivot := centre + forward * back
+			pivot.y = low
+			var turn := Transform3D(Basis(b.x, deg_to_rad(-HAT_TILT * tip)), Vector3.ZERO)
+			var moved := Transform3D(Basis.IDENTITY, pivot + Vector3.UP * HAT_LIFT * size * tip) * turn * Transform3D(Basis.IDENTITY, -pivot)
+			mesh.global_transform = moved * mesh.global_transform
+			box = mesh.global_transform * mesh.get_aabb()
+			centre = box.get_center()
+			low = INF
+			for i in 8: low = minf(low, box.get_endpoint(i).y)
+		point = centre + forward * front * HAT_FRONT + right * 0.1 * box.size.length()
+		point.y = low + 0.01 * size
+		# On the brim itself: the front brim point nearest that, the hoof just under it.
+		var brim: Variant = row.get("brim")
+		if brim is PackedVector3Array and not (brim as PackedVector3Array).is_empty():
+			var best := INF
+			var on := point
+			for v: Vector3 in brim:
+				var at := mesh.global_transform * v
+				var flat := Vector2(at.x - point.x, at.z - point.z).length()
+				if flat < best: best = flat; on = at
+			point = on - Vector3.UP * HAT_UNDER * size
+	else:
+		# No hat piece to read: just above her brow, out in front of her forehead.
+		var head := _bone_at(pony, "pony_head")
+		point = head + forward * 0.16 * size + Vector3.UP * (0.05 + 0.03 * tip) * size + right * 0.04 * size
+	pose.set("reach_leg", "_R" if float(row.side) > 0.0 else "_L")
+	pose.set("reach_to", point)
+	pose.set("reach_weight", IDLES.hat_reach(t))
+
+
+## Hats (2026-11-24): her own (Applejack's, Braeburn's: identity accessories ending "Hat"),
+## Daring Do's (part of her mane mesh), or a hat or cap from the game's wardrobe (pony_wardrobe.gd
+## keeps what she wears in her "wardrobe" meta).
+const HAT_IN_MANE := ["daring_do"]
+const WARDROBE_HATS := ["beanie", "sunhat", "wizard_hat", "cowpony-hat", "detective-hat", "nurse-cap"]
+func _hatted(pony: Node3D) -> bool:
+	var identity: Variant = pony.get("identity")
+	if identity != null:
+		if str(identity.get("id")) in HAT_IN_MANE: return true
+		var own: Variant = identity.get("accessories")
+		if own is Array:
+			for a: Variant in own:
+				if str(a).ends_with("Hat"): return true
+	var worn: Variant = pony.get_meta("wardrobe", {})
+	if worn is Dictionary:
+		for kind: Variant in (worn as Dictionary).keys():
+			if str(kind) in WARDROBE_HATS: return true
+	return false
 
 
 ## The princesses' bodies (and far bigger wings) are their own models.
@@ -141,13 +416,18 @@ func _drowsy_hours() -> bool:
 func _choose(pony: Node3D) -> String:
 	var options: Array = []
 	for idle: String in IDLES.LENGTH:
-		if idle in IDLES.VARIANTS.values(): continue
+		if idle in IDLES.VARIANTS.values() or idle in IDLES.TRIGGERED or idle in IDLES.OFF or idle in IDLES.SEATED: continue
 		if idle in IDLES.WINGED and not _winged(pony): continue
 		if idle in IDLES.NIGHT and not _drowsy_hours(): continue
 		if idle in IDLES.HORNED and not _brushes(pony): continue
 		if idle in IDLES.MAGIC and not _horned(pony): continue
 		# Shelved for the princesses: their open wings don't fit their bodies yet (a known game bug).
 		if idle in IDLES.NOT_PRINCESSES and _princess(pony): continue
+		if idle in IDLES.NOT_SUN_MOON and (_sun_pony(pony) or _moon_pony(pony)): continue
+		if idle == "hoof_fringe" and not _hoof_fringe_ok(pony): continue
+		if idle == "hoof_hat" and not _hoof_hat_ok(pony): continue
+		if idle == "graze" and (not _on_grass(pony) or _sun_pony(pony) or _moon_pony(pony)): continue
+		if idle == "graze_magic" and (not _on_grass(pony) or not (_sun_pony(pony) or _moon_pony(pony)) or not _horned(pony)): continue
 		if idle in IDLES.PRINCESS_ONLY and not (_princess(pony) and _horned(pony)): continue
 		if idle == "sun" and (not _sun_pony(pony) or not _sun_hours()): continue
 		if idle == "moon" and (not _moon_pony(pony) or not _moon_hours()): continue
@@ -169,11 +449,16 @@ func play(pony: Node3D, idle: String, side := 0.0, forced := false) -> bool:
 	if not skeleton is Skeleton3D: return false
 	var row := {"idle": idle, "side": side if side != 0.0 else (1.0 if _rng.randf() < 0.5 else -1.0),
 		"time": 0.0, "check": CHECK, "leaving": false, "fade": 1.0, "forced": forced, "wings": null, "ears": "", "lids": false, "mouth": false, "kicked": false}
-	if idle in IDLES.RESTING:
+	var seated_now := idle in IDLES.SEATED and _sitting(pony)
+	if idle in IDLES.SEATED and not seated_now:
+		# Only ever on a pony already sitting; forced (the lab, Idle Life Debug), she sits first.
+		if not forced or not _ear_scratch_ok(pony, true): return false
+	if idle in IDLES.SEATED and seated_now and not _ear_scratch_ok(pony, true): return false
+	if idle in IDLES.RESTING or (idle in IDLES.SEATED and not seated_now):
 		# Down first: lying or sitting, half and half (stargazing: sitting); the idle waits until she
 		# has settled.
 		if (idle in IDLES.WINGED and not _winged(pony)) or not pony.has_method("request_posture"): return false
-		row.rest = "sit" if idle == "stargaze" or _rng.randf() < 0.5 else "lie_down"
+		row.rest = "lie_down" if idle in ["graze", "graze_magic"] else "sit" if idle == "stargaze" or idle in IDLES.SEATED or _rng.randf() < 0.5 else "lie_down"
 		if not LAB_REST.is_empty(): row.rest = LAB_REST
 		if not bool(pony.request_posture(row.rest)): return false
 		row.stage = "settling"
@@ -198,6 +483,28 @@ func play(pony: Node3D, idle: String, side := 0.0, forced := false) -> bool:
 		# glow_object measures the brush as it is now, still shrunk to nothing.
 		var aura: Node3D = MAGIC_AURA.create(brush, magic.get("color"), 1.0, 0.13 * _size(pony))
 		row.glows = [aura] if aura != null else []
+	if idle == "graze_magic":
+		if not _horned(pony): return false
+		var tuft := TUFT.make(_rng.randi())
+		(pony.get_parent() if pony.get_parent() != null else pony).add_child(tuft)
+		tuft.visible = false
+		# Kept as the "cup" so the tea's clean-up (_drop_scroll) takes it away too.
+		row.cup = tuft
+	if idle == "hoof_hat":
+		if not _hoof_hat_ok(pony) and not forced: return false
+		var fringe := _fringe(pony)
+		if fringe.has("strokes") and float(fringe.side) != 0.0 and side == 0.0: row.side = float(fringe.side)
+		var hat := _hat_node(pony)
+		if hat != null:
+			row.hat = hat
+			row.hat_from = hat.transform
+			row.brim = _brim_points(pony, hat)
+	if idle == "hoof_fringe":
+		# Her forehoof on the side her forelock falls (either, when it falls evenly).
+		if not _hoof_fringe_ok(pony) and not forced: return false
+		var fringe := _fringe(pony)
+		if not fringe.has("strokes"): return false
+		if float(fringe.side) != 0.0 and side == 0.0: row.side = float(fringe.side)
 	if idle in ["stretch", "stretch_deep", "wing_stretch"] and _winged(pony):
 		row.wings = _open_wings(pony, 0.0)
 	if idle in IDLES.MAGIC:
@@ -281,6 +588,7 @@ func _advance(pony: Variant, delta: float) -> void:
 	if row.check <= 0.0 and not bool(row.leaving) and not bool(row.forced):
 		row.check = CHECK
 		if not _still_free(pony, row): row.leaving = true
+	if str(row.idle) == "tippy_taps": _hold_hooves(pony)
 	if bool(row.leaving): row.fade = maxf(float(row.fade) - delta / FADE_OUT, 0.0)
 	var fade := float(row.fade)
 	row.pose.time = row.time
@@ -293,6 +601,7 @@ func _advance(pony: Variant, delta: float) -> void:
 		var reader := sk.get_node_or_null(FRINGE.READER)
 		if reader != null: sk.move_child(reader, -1)
 	_face(pony, row, fade)
+	_mane_follow(pony, row, fade)
 	if not bool(row.get("recorded", false)) and not bool(row.leaving) and float(row.time) >= RECORD_AT * total: _record(pony, row)
 	if row.has("flight") and float(row.time) > 1.0 and not bool(row.flight.call("active")):
 		row.time = maxf(float(row.time), total - 0.6)
@@ -304,6 +613,7 @@ func _advance(pony: Variant, delta: float) -> void:
 ## Still free (_free), not counting the scroll's own gaze: an action gaze makes the game's
 ## fidget test say she is busy.
 func _still_free(pony: Node3D, row: Dictionary) -> bool:
+	if str(row.idle) == "tippy_taps" or str(row.idle) in IDLES.MOODS.values(): return _taps_free(pony, true)
 	if row.has("flight") and row.flight != null and bool(row.flight.call("active")):
 		# Up in the air the fidget test says she isn't standing: only being spoken to or held
 		# counts (she lands by herself either way).
@@ -311,7 +621,7 @@ func _still_free(pony: Node3D, row: Dictionary) -> bool:
 	var eye: Variant = row.get("gaze_eye")
 	var ours: bool = is_instance_valid(eye) and pony.get("action_gaze_target") == eye
 	if ours: pony.set("action_gaze_target", null)
-	var free := _free(pony, row.has("stage"))
+	var free := _free(pony, row.has("stage") or str(row.idle) in IDLES.SEATED)
 	if ours: pony.set("action_gaze_target", eye)
 	return free
 
@@ -447,6 +757,88 @@ func _face(pony: Node3D, row: Dictionary, fade: float) -> void:
 			var blink := smoothstep(0.0, 0.15, cycle) * (1.0 - smoothstep(0.35, 0.55, cycle)) if t > 3.0 else 0.0
 			var calm := IDLES.envelope(t, total, 2.0, 1.5) * fade
 			_expression(pony, row, 0.45 * calm, (0.2 + 0.8 * blink) * calm)
+		"shake":
+			# Eyes shut tight while she shakes; her tail flicks side to side with it.
+			var s := IDLES.shake_amount(t)
+			_lids(pony, row, minf(1.0, s * 1.5) * fade)
+			var flicks := int(row.get("flicks", 0))
+			if s > 0.5 and t > IDLES.SHAKE.x + 0.2 + 0.18 * flicks:
+				row.flicks = flicks + 1
+				_flick_tail(pony, (1.0 if flicks % 2 == 0 else -1.0) * float(row.side), 1.4)
+		"mood_angry":
+			# A lash of the tail and the stamp's sound as the hoof comes down (Celestia's and
+			# Luna's deeper, and your view shakes). Her face: her AI's own.
+			if not bool(row.get("swished", false)) and t > IDLES.ANGRY_STAMP:
+				row.swished = true
+				_flick_tail(pony, float(row.side), 1.8)
+				if fade > 0.5:
+					var royal := _sun_pony(pony) or _moon_pony(pony)
+					var hoof := _bone_at(pony, "pony_finger%s_end" % ("_R" if float(row.side) > 0.0 else "_L"))
+					SFX.play(pony, "stamp_royal" if royal else "stamp", hoof)
+					if royal: SFX.shake(get_tree(), hoof)
+		"hoof_fringe":
+			_reach_fringe(pony, row, t)
+		"hoof_hat":
+			_reach_hat(pony, row, t)
+		"graze":
+			# Her jaw working on each nibble and through the chewing, with the game's own soft
+			# chewing sound (props_catalogue.gd prop_bite_soft) on each bite and every other chew.
+			# The mouth rig's own shapes (pony_mouth.gd): the jaw dropping open on each chew and
+			# pressing shut between (dev 2026-11-24: show the chewing).
+			var jaw := IDLES.graze_jaw(t) * fade
+			_mouth(pony, row, 0.0, {"open": 0.5 * jaw, "press": 0.45 * (1.0 - jaw) * IDLES.graze_chewing(t) * fade})
+			var due := 0
+			for b: float in IDLES.GRAZE_BITES: if t > b: due += 1
+			if IDLES.graze_chewing(t) > 0.5: due = IDLES.GRAZE_BITES.size() + floori((t - IDLES.GRAZE_CHEW.x) * IDLES.GRAZE_CHEW_RATE / 2.0)
+			if due > int(row.get("munched", 0)) and fade > 0.5:
+				row.munched = due
+				SOUNDS.play_event(pony, "prop_bite_soft", {}, _bone_at(pony, "MOUNT_MOUTH"))
+			_expression(pony, row, 0.25 * IDLES.envelope(t, total, 3.0, 1.0) * fade, 0.0)
+		"graze_magic":
+			_move_tuft(pony, row, fade)
+			var jaw := IDLES.tuft_jaw(t) * fade
+			var chewing := IDLES.tuft_chewing(t)
+			_mouth(pony, row, 0.0, {"open": 0.55 * jaw, "press": 0.45 * (1.0 - jaw) * chewing * fade})
+			# Eyes shut and smiling as she chews, the game's chewing sound every other chew.
+			var pleased := smoothstep(IDLES.TUFT_CHEW.x, IDLES.TUFT_CHEW.x + 0.4, t) * IDLES.envelope(t, total, 0.5, 1.0) * fade
+			_expression(pony, row, 0.7 * pleased, 0.9 * pleased)
+			if chewing > 0.5:
+				var due := floori((t - IDLES.TUFT_CHEW.x) * IDLES.GRAZE_CHEW_RATE / 2.0) + 1
+				if due > int(row.get("munched", 0)) and fade > 0.5:
+					row.munched = due
+					SOUNDS.play_event(pony, "prop_bite_soft", {}, _mouth_at(pony))
+		"ear_scratch":
+			_reach_ear(pony, row, t)
+			# Eyes squeezed shut, a little smile and a hint of tongue while she scratches.
+			var bliss := IDLES.envelope(t, total, 1.2, 1.6) * fade
+			_expression(pony, row, 0.45 * bliss, 0.85 * bliss)
+			var lick := IDLES.scratching(t) * fade
+			_mouth(pony, row, 0.0, {"open_lips": 0.3 * lick, "tongue": 0.45 * lick})
+		"tippy_taps":
+			# A light tap as each forehoof lands (idles.gd taps_stomp).
+			for i in 2:
+				var landed := floori((t - IDLES.TAPS.x) * IDLES.TAPS_RATE + 0.5 * i - IDLES.TAPS_STOMP.y)
+				var key := "landed%d" % i
+				if landed >= 0 and landed > int(row.get(key, -1)):
+					row[key] = landed
+					if IDLES._taps_go(t) > 0.25 and fade > 0.5:
+						var leg := "_R" if (i == 0) == (float(row.side) > 0.0) else "_L"
+						SFX.play(pony, "tap", _bone_at(pony, "pony_finger%s_end" % leg))
+			# The game's own "delighted" face (happy closed eyes, big grin), its closed eyes held
+			# through the stomping; ears up; a swish of the tail as the stomping starts.
+			var glee := IDLES.envelope(t, total, 0.3, 0.6) * fade
+			_ears(pony, row, "ears_alert", 0.7 * glee)
+			var expressions: Variant = pony.get("expressions")
+			if expressions != null and expressions.has_method("set_dialogue"):
+				if not row.has("face_was") and t > 0.2 and fade > 0.5:
+					row.face_was = str(expressions.get("dialogue_face"))
+					expressions.set_dialogue("delighted")
+				elif row.has("face_was") and str(expressions.get("dialogue_face")) == "delighted":
+					if t < total - 0.5 and fade > 0.5: expressions.set("_eye_accent_age", 0.0)
+					elif not bool(row.get("face_back", false)): _face_back(pony, row)
+			if not bool(row.get("swished", false)) and t > IDLES.TAPS.x:
+				row.swished = true
+				_lift_tail(pony, 1.6)
 
 
 ## A smile and her lids, through the expressions' touch channel.
@@ -669,6 +1061,15 @@ func _lift_tail(pony: Node3D, strength: float) -> void:
 	springs.kick((pony.global_basis.y * 1.0 + pony.global_basis.z * 0.4).normalized() * strength)
 
 
+## The tail flicked to one side (`side` +1 her right) with its spring's own kick.
+func _flick_tail(pony: Node3D, side: float, strength: float) -> void:
+	var tail: Variant = pony.get("tail_motion")
+	if tail == null or not bool(tail.get("active")): return
+	var springs: Variant = tail.get("springs")
+	if springs == null or not springs.has_method("kick"): return
+	springs.kick((pony.global_basis.x * side + pony.global_basis.y * 0.3).normalized() * strength)
+
+
 func _open_wings(pony: Node3D, value := WING_HOLD) -> Node:
 	if not _winged(pony): return null
 	if pony.has_method("_ensure_flight"): pony.call("_ensure_flight")
@@ -719,6 +1120,12 @@ func _drop_brush(pony: Variant, row: Dictionary) -> void:
 
 ## Her eyes, ears and mouth back to whoever else owns them.
 func _release_face(pony: Node3D, row: Dictionary) -> void:
+	if row.has("hat") and is_instance_valid(row.hat): (row.hat as Node3D).transform = row.hat_from
+	if bool(row.get("followed", false)):
+		var link: Variant = pony.get("hair_link")
+		if link != null: link.set("follow_head", 0.0)
+		row.followed = false
+	if row.has("face_was") and not bool(row.get("face_back", false)): _face_back(pony, row)
 	if bool(row.get("lids")):
 		var expressions: Variant = pony.get("expressions")
 		if expressions != null and expressions.has_method("release_touch"): expressions.release_touch(OWNER)
@@ -733,6 +1140,17 @@ func _release_face(pony: Node3D, row: Dictionary) -> void:
 		if mouth != null and mouth.has_method("set_expression"):
 			for shape: Variant in used: mouth.set_expression(str(shape), 0.0)
 	row.lids = false; row.ears = ""; row.mouth = false
+
+
+## The face she had before the tippy-taps' "delighted" one, unless someone (her AI) has since
+## given her another.
+func _face_back(pony: Node3D, row: Dictionary) -> void:
+	row.face_back = true
+	var expressions: Variant = pony.get("expressions")
+	if expressions == null or str(expressions.get("dialogue_face")) != "delighted": return
+	var was := str(row.get("face_was", ""))
+	if was.is_empty(): expressions.clear_dialogue()
+	else: expressions.set_dialogue(was)
 
 
 # ---------------------------------------------------------------- the scroll
@@ -904,6 +1322,9 @@ func _drop_scroll(pony: Variant, row: Dictionary) -> void:
 	row.erase("near_mesh")
 	if is_instance_valid(row.get("pebble")): (row.pebble as Node).queue_free()
 	row.erase("pebble")
+	for c: Variant in row.get("crumbs", []):
+		if is_instance_valid((c as Array)[0]): ((c as Array)[0] as Node).queue_free()
+	row.erase("crumbs")
 	if not row.has("scroll") and not row.has("cup") and not row.has("loose"): return
 	if row.has("glows"): UNICORN_MAGIC.unglow_object(row.glows)
 	row.erase("glows")
@@ -1022,6 +1443,121 @@ func _move_tea(pony: Node3D, row: Dictionary, fade: float) -> void:
 	if eye is Node3D and is_instance_valid(eye) and pony.has_method("set_action_gaze"):
 		(eye as Node3D).global_position = (now + cup_up * TEA.CUP_HEIGHT * grow).lerp(Vector3(row.ahead), sip)
 		if pony.get("action_gaze_target") != eye: pony.call("set_action_gaze", eye)
+
+
+# ---------------------------------------------------------------- the princesses' grazing
+
+## Celestia's and Luna's grazing, moment by moment: her horn lights, a tuft of grass pops out of
+## the ground before her in her magic with a little shake, floats up in an arc to her mouth,
+## turning so its blades point away from her, and goes in (shrinking to a few blades at her lips),
+## which shrink away as she chews.
+## The tuft's size (times tuft.gd's, at size 1): a proper mouthful, readable from a few metres
+## (2026-11-24: at 1 it was only muzzle-sized); and where it comes out of the ground.
+const TUFT_SCALE := 1.8
+const TUFT_OUT := 0.45
+func _move_tuft(pony: Node3D, row: Dictionary, fade: float) -> void:
+	var tuft: Variant = row.get("cup")
+	var magic: Variant = pony.get("magic")
+	if not tuft is Node3D or not is_instance_valid(tuft) or magic == null or not is_instance_valid(magic): return
+	var t := float(row.time)
+	var size := _size(pony)
+	if not row.has("ground"):
+		var forward := _bone_at(pony, "pony_head") - _bone_at(pony, "pony_hips")
+		forward.y = 0.0
+		forward = forward.normalized() if not forward.is_zero_approx() else -pony.global_basis.z.normalized()
+		row.forward = forward
+		# Clear of her outstretched forelegs (TUFT_OUT metres ahead of her mouth at size 1).
+		var at := _mouth_at(pony) + forward * TUFT_OUT * size
+		row.ground = Vector3(at.x, pony.global_position.y, at.z)
+	var forward: Vector3 = row.forward
+	var colour: Color = magic.call("vivid", magic.get("color")) if magic.has_method("vivid") else magic.get("color")
+	if not bool(row.get("lit", false)) and t > 0.6:
+		row.lit = true
+		magic.call("hold", true)
+	var gone := t > IDLES.TUFT_CHEW.y or fade < 0.5
+	if t > IDLES.TUFT_PLUCK.x and not gone and not bool(row.get("shown", false)):
+		row.shown = true
+		(tuft as Node3D).visible = true
+		magic.call("cast", 0.6)
+		var aura: Node3D = MAGIC_AURA.create(tuft, magic.get("color"), 1.0, 0.07 * TUFT_SCALE * size)
+		row.glows = [aura] if aura != null else []
+	if not bool(row.get("shown", false)): return
+	if gone:
+		_drop_scroll(pony, row)
+		return
+	# In her mouth: her magic lets go.
+	if t > IDLES.TUFT_POP.y and row.has("glows"):
+		UNICORN_MAGIC.unglow_object(row.glows)
+		row.erase("glows")
+		if bool(row.get("lit", false)): magic.call("hold", false); row.lit = false
+	var ground: Vector3 = row.ground
+	var mouth := _mouth_at(pony)
+	var lifted := ground + Vector3.UP * 0.05 * TUFT_SCALE * size
+	var pluck := smoothstep(IDLES.TUFT_PLUCK.x, IDLES.TUFT_PLUCK.y, t)
+	var right := Vector3.UP.cross(-forward).normalized()
+	# A little wiggle as it comes loose, then up a touch higher to be shaken: side to side
+	# (TUFT_SHAKES times), tilting with each swing, the soil falling off in crumbs.
+	var wiggle := sin(t * 40.0) * 0.006 * size * pluck * (1.0 - smoothstep(IDLES.TUFT_PLUCK.y, IDLES.TUFT_SHAKE.x, t))
+	var shake := IDLES.tuft_shake(t)
+	var raise := smoothstep(IDLES.TUFT_PLUCK.y, IDLES.TUFT_SHAKE.x + 0.2, t) * 0.06 * size
+	var at := (ground + Vector3.DOWN * 0.03 * size).lerp(lifted, pluck) + right * (wiggle + shake * 0.06 * size) + Vector3.UP * raise
+	lifted += Vector3.UP * raise
+	_shake_soil(pony, row, tuft, t, size)
+	var fly := smoothstep(IDLES.TUFT_FLOAT.x, IDLES.TUFT_FLOAT.y, t)
+	if fly > 0.0:
+		# Up in an arc: above and in front of her mouth, then in.
+		var c := lifted.lerp(mouth, 0.5) + Vector3.UP * 0.12 * size + forward * 0.06 * size
+		at = lifted.bezier_interpolate(c, mouth + forward * 0.08 * size, mouth + forward * 0.02 * size, fly)
+	var pop := smoothstep(IDLES.TUFT_POP.x, IDLES.TUFT_POP.y, t)
+	if pop > 0.0: at = at.lerp(mouth - forward * 0.01 * size, pop)
+	# Upright off the ground; blades turned to point away from her as it reaches her mouth.
+	var up := Vector3.UP.rotated(forward, deg_to_rad(25.0) * shake).slerp(forward, fly).normalized()
+	var basis := Basis(right, up, right.cross(up)).orthonormalized()
+	# Full size, a few blades' worth once in her mouth, gone by the end of the chewing.
+	var scale := TUFT_SCALE * size * lerpf(1.0, 0.45, pop) * (1.0 - smoothstep(IDLES.TUFT_CHEW.x, IDLES.TUFT_CHEW.y - 0.4, t))
+	(tuft as Node3D).global_basis = basis.scaled(Vector3.ONE * maxf(scale, 0.001))
+	(tuft as Node3D).global_position = at
+
+
+## The tuft's soil: shrinking with each shake (IDLES.tuft_soil), crumbs dropping off it to the
+## ground on each swing and disappearing there.
+const CRUMBS_PER_SHAKE := 4
+const CRUMB_LIFE := 1.2
+func _shake_soil(pony: Node3D, row: Dictionary, tuft: Node3D, t: float, size: float) -> void:
+	var soil := tuft.get_node_or_null("Soil") as Node3D
+	var left := IDLES.tuft_soil(t)
+	if soil != null:
+		soil.scale = Vector3.ONE * maxf(left, 0.001)
+		soil.visible = left > 0.02
+	var crumbs: Array = row.get("crumbs", [])
+	# A handful at each swing's end.
+	var swings := floori(clampf((t - IDLES.TUFT_SHAKE.x) / (IDLES.TUFT_SHAKE.y - IDLES.TUFT_SHAKE.x), 0.0, 0.999) * IDLES.TUFT_SHAKES * 2.0) if t > IDLES.TUFT_SHAKE.x else -1
+	if t < IDLES.TUFT_SHAKE.y and swings > int(row.get("swings", -1)):
+		row.swings = swings
+		var from := soil.global_position if soil != null else tuft.global_position
+		for i in CRUMBS_PER_SHAKE:
+			var bit := TUFT.crumb(TUFT_SCALE * size)
+			tuft.get_parent().add_child(bit)
+			bit.global_position = from + Vector3(_rng.randf_range(-1, 1), 0.0, _rng.randf_range(-1, 1)) * 0.01 * size
+			crumbs.append([bit, Vector3(_rng.randf_range(-0.3, 0.3), _rng.randf_range(0.0, 0.4), _rng.randf_range(-0.3, 0.3)) * size, t])
+	var step := get_physics_process_delta_time()
+	var floor_y := pony.global_position.y
+	var kept: Array = []
+	for c: Array in crumbs:
+		var bit: Variant = c[0]
+		if not is_instance_valid(bit): continue
+		if t - float(c[2]) > CRUMB_LIFE:
+			(bit as Node).queue_free(); continue
+		var v: Vector3 = c[1]
+		v.y -= 9.8 * step
+		var p: Vector3 = (bit as Node3D).global_position + v * step
+		if p.y < floor_y: p.y = floor_y; v = Vector3.ZERO
+		(bit as Node3D).global_position = p
+		# Gone into the grass: shrinking away over the last third of its life.
+		(bit as Node3D).scale = Vector3.ONE * (1.0 - smoothstep(CRUMB_LIFE * 0.6, CRUMB_LIFE, t - float(c[2])))
+		c[1] = v
+		kept.append(c)
+	row.crumbs = kept
 
 
 # ---------------------------------------------------------------- the shoe check
@@ -1248,14 +1784,14 @@ func _shoe_path(pony: Node3D, row: Dictionary, hoof: Vector3, present: Vector3, 
 ## and the ponies within WITNESS_RANGE metres, which the AI reads into their prompts. %s is her
 ## name, %p her/his. At most one per pony every RECORD_GAP seconds.
 const RECORD := {
-	"scroll": "%s conjured a scroll with %p magic, read it through and made it vanish again.",
-	"write": "%s conjured a blank scroll and a quill with %p magic, wrote a short note, signed it and made it vanish.",
-	"tea": "%s conjured a cup of tea with %p magic, sipped it and made the cup vanish.",
-	"shoe": "%s took off one of %p shoes with %p magic, shook a pebble out of it and put it back on.",
-	"sun": "%s flew up a little way at %t, faced the sun and lit %p horn toward it, then landed.",
-	"moon": "%s flew up a little way as the moon sat low on the horizon, faced it and lit %p horn toward it, then landed.",
-	"doze": "%s dozed off on %p hooves for a moment, then woke with a little start.",
+	"tippy_taps": "%s got so excited %e did a little tippy-tap dance on the spot, stomping %p forehooves with %p eyes squeezed shut and a big grin. Not very princess-like!",
+	"mood_angry": "%s stamped %p hoof and tossed %p head in anger, which is very unlike %o.",
+	"graze_magic": "%s lay down in the grass, plucked a tuft of it with %p magic and ate it, chewing with a contented smile. Not very princess-like!",
 }
+## Only a princess's tippy-taps are remembered: out of character for her, so worth mentioning.
+## Other idles are not recorded (dev 2026-11-23: no need, and each line costs prompt tokens).
+const RECORD_PRINCESS_ONLY := ["tippy_taps", "graze_magic"]
+const RECORD_CELESTIA_ONLY := ["mood_angry"]
 const RECORD_AT := 0.45
 const RECORD_GAP := 180.0
 const WITNESS_RANGE := 10.0
@@ -1268,6 +1804,9 @@ func _record(pony: Node3D, row: Dictionary) -> void:
 	var line: String = RECORD.get(str(row.idle), "")
 	var game: Variant = Mods.game
 	if line.is_empty() or not is_instance_valid(game): return
+	if str(row.idle) in RECORD_PRINCESS_ONLY and not _princess(pony): return
+	# Celestia hardly ever loses her temper: hers is worth remembering, nopony else's (dev 2026-11-24).
+	if str(row.idle) in RECORD_CELESTIA_ONLY and not _sun_pony(pony): return
 	var memory: Variant = game.get("world_context")
 	var director: Variant = game.get("director")
 	if memory == null or director == null or not memory.has_method("record"): return
@@ -1289,7 +1828,144 @@ func _record(pony: Node3D, row: Dictionary) -> void:
 	var his := "his" if identity != null and bool(identity.get("stallion")) else "her"
 	var clock := get_node_or_null("/root/TimeOfDay")
 	var when := "sunrise" if clock != null and float(clock.get("hours")) < 12.0 else "sunset"
-	var text := line.replace("%s", name).replace("%p", his).replace("%t", when)
+	var she := "he" if his == "his" else "she"
+	var text := line.replace("%s", name).replace("%p", his).replace("%e", she).replace("%o", "him" if his == "his" else "her").replace("%t", when)
 	if str(memory.call("record", "idle_life", text, witnesses, [id])).is_empty(): return
 	_recorded[pony] = now
 	if LAB_DEBUG: print("RECORDED ", id, " ", witnesses, " ", text)
+
+
+# ---------------------------------------------------------------- excitement
+
+## Tippy-taps (dev 2026-11-23): when a pony (mare or stallion) gets excited (the game's
+## excitement.gd: her AI's [excited] or [wings:spread] tag, or petting her head, neck or mane),
+## she stomps her forehooves in glee, once per excited spell and at most every TAPS_GAP seconds.
+## Never during or straight after a kiss (anyone that close would get trodden on): a spell that
+## included a kiss gets none. An earth pony's own excited forehoof raise gives way to it.
+const TAPS_GAP := 30.0
+const TAPS_SCAN := 0.2
+## excitement.gd's Hoof enum: KICKING, RAISED, DONE.
+const HOOF_KICKING := 1
+const HOOF_RAISED := 2
+const HOOF_DONE := 3
+var _taps_scan := 0.0
+## pony -> excited at the last look
+var _was_excited: Dictionary = {}
+## pony -> true while this excited spell still owes her tippy-taps
+var _taps_due: Dictionary = {}
+## pony -> when her last tippy-taps started (msec)
+var _taps_at: Dictionary = {}
+
+
+func _excitement() -> void:
+	for pony: Variant in _was_excited.keys():
+		if not is_instance_valid(pony):
+			_was_excited.erase(pony); _taps_due.erase(pony); _taps_at.erase(pony)
+			_faces.erase(pony); _mood_due.erase(pony); _mood_at.erase(pony)
+	for pony: Variant in _ponies():
+		if not is_instance_valid(pony) or not pony is Node3D: continue
+		var excitement: Variant = pony.get("excitement")
+		var on: bool = excitement is Node and is_instance_valid(excitement) and excitement.has_method("excited") and bool(excitement.excited())
+		var was := bool(_was_excited.get(pony, false))
+		_was_excited[pony] = on
+		_moods(pony)
+		if not on:
+			_taps_due.erase(pony)
+			continue
+		if not was: _taps_due[pony] = true
+		if _kissed(pony): _taps_due[pony] = false
+		if not bool(_taps_due.get(pony, false)): continue
+		if Time.get_ticks_msec() - int(_taps_at.get(pony, -1000000000)) < int(TAPS_GAP * 1000.0):
+			_taps_due[pony] = false
+			continue
+		if _rows.has(pony):
+			var row: Dictionary = _rows[pony]
+			# Sitting, lying or flying idles keep her; anything else fades out for the tippy-taps.
+			if str(row.idle) == "tippy_taps" or row.has("stage") or row.has("flight") or bool(row.forced): _taps_due[pony] = false
+			else: row.leaving = true
+			continue
+		if not _taps_free(pony): continue
+		if play(pony, "tippy_taps"):
+			if LAB_DEBUG: print("TAPS start ", Time.get_ticks_msec(), " last=", _taps_at.get(pony, -1))
+			_taps_due[pony] = false
+			_taps_at[pony] = Time.get_ticks_msec()
+
+
+## Mood reactions (dev 2026-11-24): when her AI gives a line one of IDLES.MOODS' faces (sad, shy,
+## angry, surprised), she reacts with her body: once per change of face, at most every MOOD_GAP
+## seconds, and only if she starts within MOOD_START seconds (the face may be gone by then).
+## The tippy-taps come first. Her face itself is left to her AI.
+const MOOD_GAP := 30.0
+const MOOD_START := 2.0
+## pony -> her AI's line face at the last look
+var _faces: Dictionary = {}
+## pony -> [reaction idle, msec it became due]
+var _mood_due: Dictionary = {}
+## pony -> when her last mood reaction started (msec)
+var _mood_at: Dictionary = {}
+
+
+func _moods(pony: Node3D) -> void:
+	var expressions: Variant = pony.get("expressions")
+	var face := str(expressions.get("dialogue_face")) if expressions != null else ""
+	var now := Time.get_ticks_msec()
+	if face != str(_faces.get(pony, "")):
+		_faces[pony] = face
+		if IDLES.MOODS.has(face): _mood_due[pony] = [IDLES.MOODS[face], now]
+		else: _mood_due.erase(pony)
+	if not _mood_due.has(pony) or bool(_taps_due.get(pony, false)): return
+	var due: Array = _mood_due[pony]
+	if now - int(due[1]) > int(MOOD_START * 1000.0) or now - int(_mood_at.get(pony, -1000000000)) < int(MOOD_GAP * 1000.0):
+		_mood_due.erase(pony)
+		return
+	if _rows.has(pony):
+		var row: Dictionary = _rows[pony]
+		# Sitting, lying, flying, forced or tippy-taps keep her; anything else fades out for it.
+		if str(row.idle) == "tippy_taps" or str(row.idle) in IDLES.MOODS.values() or row.has("stage") or row.has("flight") or bool(row.forced): _mood_due.erase(pony)
+		else: row.leaving = true
+		return
+	if not _taps_free(pony): return
+	if play(pony, str(due[0])):
+		if LAB_DEBUG: print("MOOD ", due[0], " ", now)
+		_mood_due.erase(pony)
+		_mood_at[pony] = now
+
+
+func _kissed(pony: Node3D) -> bool:
+	var affection: Node = pony.get_node_or_null("Affection")
+	return affection != null and str(affection.get("kind")) == "kiss"
+
+
+## On all four hooves and standing still, nothing holding her: not kissed, cuddled, seated, held,
+## asleep, flying, sitting or lying, and no hoof busy (but her own excited kick or raise).
+## `playing`: already stomping, so any hoof hold at all is someone else's.
+func _taps_free(pony: Node3D, playing := false) -> bool:
+	if not pony.is_inside_tree() or not pony.is_in_group("sim_ponies"): return false
+	if int(pony.get("sim_tier")) > 1: return false
+	if bool(pony.get("sleeping")) or bool(pony.get("motion_paused")) or bool(pony.get("_held")): return false
+	if pony.has_meta("seated") or bool(pony.get_meta("cuddle_active", false)) or bool(pony.get_meta("affection_active", false)): return false
+	if _kissed(pony): return false
+	if pony.has_method("grounded") and not bool(pony.grounded()): return false
+	if float(pony.get("actual_speed")) > 0.05: return false
+	var flight: Variant = pony.get("flight")
+	if flight != null and flight.has_method("active") and bool(flight.active()): return false
+	var posture: Variant = pony.get("posture")
+	if posture is RefCounted and (not bool(posture.settled()) or bool(posture.active())): return false
+	var hold: Variant = pony.get("hoof_hold")
+	if hold == null or not hold.has_method("active") or not bool(hold.active()): return true
+	if playing: return false
+	# Her own excited earth-pony gesture: the kick finishes first; a raised forehoof comes down now.
+	var excitement: Variant = pony.get("excitement")
+	var hoof: int = int(excitement.get("_hoof")) if excitement is Node else -1
+	if hoof == HOOF_RAISED and float(hold.get("gesture_left")) > 0.0:
+		excitement.set("_hoof", HOOF_DONE)
+		hold.release()
+		return false   # next look, once the hoof is free
+	if hoof == HOOF_KICKING: excitement.set("_hoof", HOOF_DONE)
+	return false
+
+
+## While she stomps, the game's excitement leaves her hooves to us: no kick or forehoof raise.
+func _hold_hooves(pony: Variant) -> void:
+	var excitement: Variant = pony.get("excitement") if is_instance_valid(pony) else null
+	if excitement is Node and int(excitement.get("_hoof")) != HOOF_DONE: excitement.set("_hoof", HOOF_DONE)

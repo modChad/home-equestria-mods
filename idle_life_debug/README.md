@@ -1,6 +1,6 @@
 # Idle Life Debug
 
-- **Version:** 1.0.0
+- **Version:** 1.1.0
 - **By:** modChad
 - **Made for:** Home: Equestria 0.3.0-maredev
 - **Needs:** Idle Life
@@ -15,6 +15,7 @@ Adds an `idle` command to the game's debug console (the `` ` `` console, and Set
 | `idle <name> <pony>` | Plays it on a named pony, e.g. `idle shoe celestia`. |
 | `idle run_all [pony]` | Plays every idle on her in turn, with a 2 s pause after each. Idles she can't do are skipped and listed at the end. |
 | `idle stop [pony]` | Stops the idle she's doing, and a `run_all` if one is going. |
+| `idle excite [pony]` | Makes her excited for 4 s, as her AI's `[excited]` tag does. Idle Life's own trigger then decides whether she does the tippy-taps, and the console says what happened (and why not, e.g. she did them under 30 s ago, or she's walking). |
 
 Idles started this way play to their end; nothing interrupts them. An idle still needs what it needs (wings, a horn, a princess, room to take off), and says so if it can't play.
 

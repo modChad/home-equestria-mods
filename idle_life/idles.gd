@@ -22,13 +22,53 @@ const LENGTH := {
 	"shoe": 8.4,
 	"sun": 12.0,
 	"moon": 12.0,
+	"tippy_taps": 3.6,
+	"mood_sad": 4.5,
+	"mood_shy": 4.0,
+	"mood_angry": 2.6,
+	"mood_surprised": 2.4,
+	"shake": 3.2,
+	"hoof_fringe": 5.6,
+	"hoof_hat": 5.0,
+	"ear_scratch": 5.6,
+	"graze": 7.0,
+	"graze_magic": 8.8,
 }
+## Played only on a pony already sitting by herself (main.gd _sit_pick), never sat down for at
+## random; forced (the lab, Idle Life Debug) she sits first. Earth ponies only.
+const SEATED := ["ear_scratch"]
+## Only earth ponies and pegasi (main.gd): unicorns and alicorns have the magic brush.
+const HORNLESS := ["hoof_fringe", "hoof_hat"]
+## Never picked at random (main.gd _choose): played when a pony gets excited, or when her AI gives
+## her line one of MOODS' faces (main.gd _excitement).
+const TRIGGERED := ["tippy_taps", "mood_sad", "mood_shy", "mood_angry", "mood_surprised"]
+## Her AI's line face (face_poses.gd LINE_FACES) -> the mood reaction it starts (dev 2026-11-24).
+const MOODS := {"sad": "mood_sad", "shy": "mood_shy", "angry": "mood_angry", "ponyrage": "mood_angry",
+	"surprised": "mood_surprised", "fearful": "mood_surprised"}
+## Not for Celestia and Luna (main.gd _choose): the full-body shake (dev 2026-11-24).
+const NOT_SUN_MOON := ["shake"]
+## Switched off: never picked at random, only played when forced (Idle Life Debug's `idle shake`).
+## The shake read as a seizure in review (2026-11-24); see the idle_life notes.
+const OFF := ["shake"]
+## The tippy-taps' stomping (seconds): forehooves taking turns from TAPS.x to .y, each leg
+## TAPS_RATE lifts a second (so twice that many stomps), from the reference GIF (about 6 a second).
+const TAPS := Vector2(0.35, 3.0)
+const TAPS_RATE := 3.0
+## A stomp's shape, as parts of its cycle: up by .x, landing at .y (taps_stomp). Landing before
+## half way, so one forehoof is always down.
+const TAPS_STOMP := Vector2(0.2, 0.42)
+## The little bounce after each landing, as a part of the full lift.
+const TAPS_REBOUND := 0.12
+## Each hind hoof lifts this much of a cycle after its diagonal forehoof.
+const TAPS_HIND_LAG := 0.08
+## How far her body drops with each landing (metres at size 1).
+const TAPS_DROP := 0.012
 ## Only ponies with wings.
 const WINGED := ["preen", "wing_stretch"]
 ## Only from a little before sunset to a little after sunrise (main.gd).
 const NIGHT := ["doze", "stargaze"]
 ## She lies down or sits first (main.gd), then these play.
-const RESTING := ["preen", "stargaze"]
+const RESTING := ["preen", "stargaze", "graze", "graze_magic"]
 ## Ponies with a horn: unicorns and alicorns.
 const MAGIC := ["magic_sparkle"]
 ## Only ponies with a horn and a fringe (main.gd): unicorns and alicorns.
@@ -111,6 +151,20 @@ const PLANTED := ["stretch", "stretch_deep"]
 ## The deep stretch: forelegs may swing past their joint limits, only as far as the reach needs
 ## (the light stretch keeps every joint inside them and tips her only as far as they allow).
 const FREE_REACH := ["stretch_deep"]
+## Bones turned past the game's joint limits (idle_pose.gd), per idle. The tippy-taps' forelegs
+## and hind legs (dev 2026-11-23: override on): within the limits a hoof barely leaves the ground.
+const LEG_BONES := ["pony_shoulder_L", "pony_shoulder_R", "pony_upperArm_L", "pony_upperArm_R",
+	"pony_lowerArm_L", "pony_lowerArm_R", "pony_wrist_L", "pony_wrist_R", "pony_hand_L", "pony_hand_R",
+	"pony_femur_L", "pony_femur_R", "pony_tibia_L", "pony_tibia_R", "pony_legLower_L", "pony_legLower_R",
+	"pony_tarsal_L", "pony_tarsal_R", "pony_hoof_L", "pony_hoof_R"]
+## The shake rolls her back further than the spine's limits (about 6 degrees) allow.
+const FREE_BONES := {"tippy_taps": LEG_BONES, "mood_sad": LEG_BONES, "mood_shy": LEG_BONES,
+	"mood_angry": LEG_BONES, "mood_surprised": LEG_BONES, "shake": ["pony_spine1", "pony_spine2", "pony_spine3"],
+	"hoof_fringe": LEG_BONES, "hoof_hat": LEG_BONES, "ear_scratch": LEG_BONES, "graze": LEG_BONES}
+## And her neck and head for the hoof forelock sweep (idle_pose.gd checks both lists).
+const FREE_NECK := {"hoof_fringe": ["pony_neck1", "pony_neck2", "pony_head"], "hoof_hat": ["pony_neck1", "pony_neck2", "pony_head"],
+	"ear_scratch": ["pony_neck1", "pony_neck2", "pony_head", "pony_spine1", "pony_spine2", "pony_spine3", "pony_flank_L", "pony_flank_R"],
+	"graze": ["pony_neck1", "pony_neck2", "pony_head", "pony_spine1", "pony_spine2", "pony_spine3"]}
 ## Played instead of the light stretch half the time (main.gd).
 const VARIANTS := {"stretch": "stretch_deep"}
 ## Turns that follow how far she tips (idle_pose.gd tip_trim): the body tip itself and what
@@ -130,7 +184,7 @@ static func envelope(t: float, total: float, rise: float, fall: float) -> float:
 	return smoothstep(0.0, rise, t) * (1.0 - smoothstep(total - fall, total, t))
 
 
-static func turns(idle: String, t: float, side: float) -> Array:
+static func turns(idle: String, t: float, side: float, pony: Node = null) -> Array:
 	var leg := "_R" if side > 0.0 else "_L"
 	match idle:
 		"stretch", "stretch_deep": return _stretch(t, side)
@@ -146,7 +200,228 @@ static func turns(idle: String, t: float, side: float) -> Array:
 		"tea": return _tea(t, side)
 		"write": return _write(t, side)
 		"shoe": return _shoe(t, side)
+		"tippy_taps": return _tippy_taps(t, side)
+		"mood_sad": return _mood_sad(t, side, leg)
+		"mood_shy": return _mood_shy(t, side, leg)
+		"mood_angry": return _mood_angry(t, side, leg)
+		"mood_surprised": return _mood_surprised(t, side)
+		"shake": return _shake(t, side)
+		"hoof_fringe": return _hoof_fringe(t, side, leg)
+		"hoof_hat": return _hoof_hat(t, side, leg)
+		"ear_scratch": return _ear_scratch(t, side, leg)
+		"graze": return _graze(t, side, leg, pony != null and pony.scene_file_path.contains("/princesses/"))
+		"graze_magic": return _graze_magic(t, side)
 	return []
+
+
+## Excited tippy-taps (references/hoof stompies.gif): the forehooves stomp in turn, quick and
+## light, each with its diagonal hind hoof, her chest bobbing with each stomp and swaying onto the planted leg, head up and tilted.
+## Face (eyes squeezed shut, big grin) and tail: main.gd.
+static func _tippy_taps(t: float, side: float) -> Array:
+	var total := float(LENGTH.tippy_taps)
+	var e := envelope(t, total, 0.35, 0.6)
+	var go := _taps_go(t)
+	var out: Array = []
+	var sway := 0.0
+	for i in 2:
+		var leg := "_R" if (i == 0) == (side > 0.0) else "_L"
+		# Each leg half a cycle after the other (TAPS_STOMP: up, slam down, a little rebound).
+		var lift := taps_stomp(_taps_cycle(t, 0.5 * i)) * go
+		# Knee up, hoof tucked back under it (past the game's joint limits: FREE_BONES).
+		out.append(["pony_upperArm" + leg, "pitch", 12.0 * lift])
+		out.append(["pony_lowerArm" + leg, "pitch", 50.0 * lift])
+		out.append(["pony_wrist" + leg, "pitch", -65.0 * lift])
+		# The diagonal hind leg taps a beat (TAPS_HIND_LAG) after it, a little smaller: hock bent,
+		# hoof lifted under her, so the stomp ripples back through her body.
+		var hind := "_L" if leg == "_R" else "_R"
+		var back := taps_stomp(_taps_cycle(t, 0.5 * i - TAPS_HIND_LAG)) * go
+		out.append(["pony_femur" + hind, "pitch", -16.0 * back])
+		out.append(["pony_tibia" + hind, "pitch", 8.0 * back])
+		out.append(["pony_legLower" + hind, "pitch", 48.0 * back])
+		out.append(["pony_tarsal" + hind, "pitch", -48.0 * back])
+		out.append(["pony_hoof" + hind, "pitch", -8.0 * back])
+		sway += lift * (1.0 if leg == "_R" else -1.0)
+	# Chest and head dip with each landing (her body drops too: hips_shift), weight onto the planted leg.
+	var dip := taps_dip(t)
+	out.append(["pony_spine3", "pitch", -2.5 * dip])
+	out.append(["pony_spine3", "roll", 3.0 * sway])
+	out.append(["pony_neck1", "pitch", 6.0 * e - 4.0 * dip])
+	out.append(["pony_neck2", "pitch", 3.0 * e])
+	out.append(["pony_head", "pitch", 4.0 * e + 3.0 * dip])
+	out.append(["pony_head", "roll", side * 7.0 * e])
+	out.append(["pony_neck1", "yaw", side * 3.0 * e])
+	return out
+
+
+## The stomping's strength: eased in and out so the first and last lifts are smaller.
+static func _taps_go(t: float) -> float:
+	return smoothstep(TAPS.x - 0.1, TAPS.x + 0.25, t) * (1.0 - smoothstep(TAPS.y - 0.3, TAPS.y, t))
+
+
+## Where a leg is in its stomp (0..1), `offset` cycles behind or ahead.
+static func _taps_cycle(t: float, offset: float) -> float:
+	return fposmod((t - TAPS.x) * TAPS_RATE + offset, 1.0)
+
+
+## One stomp's lift (0..1) over its cycle `u`: up eased over the first TAPS_STOMP.x, held a moment,
+## slammed down (speeding up) to land at TAPS_STOMP.y, a small rebound, then still.
+static func taps_stomp(u: float) -> float:
+	var up := TAPS_STOMP.x
+	var land := TAPS_STOMP.y
+	if u < up: return smoothstep(0.0, up, u)
+	if u < land - 0.12: return 1.0
+	if u < land:
+		var k := (u - (land - 0.12)) / 0.12
+		return 1.0 - k * k
+	if u < land + 0.16: return TAPS_REBOUND * sin((u - land) / 0.16 * PI)
+	return 0.0
+
+
+## How far her body is dipped (0..1) after the latest forehoof landing.
+static func taps_dip(t: float) -> float:
+	var dip := 0.0
+	for i in 2:
+		var since := _taps_cycle(t, 0.5 * i) - TAPS_STOMP.y
+		if since >= 0.0 and since < 0.3: dip = maxf(dip, sin(since / 0.3 * PI))
+	return dip * _taps_go(t)
+
+
+## Where her whole body is moved at `t` (idle_pose.gd moves her hips): metres at size 1, x to her
+## right, y up, z forward. Her hooves go with it, so keep it small.
+static func hips_shift(idle: String, t: float) -> Vector3:
+	match idle:
+		"tippy_taps": return Vector3(0.0, -TAPS_DROP * taps_dip(t), 0.0)
+		"mood_angry": return Vector3(0.0, -0.018 * _angry_dip(t), 0.0)
+		"mood_surprised":
+			var hop := _surprise_hop(t)
+			return Vector3(0.0, 0.03 * hop, -0.025 * _surprise_back(t))
+	return Vector3.ZERO
+
+
+## Sad (her AI's sad face): head and neck sink, a little slump, and one forehoof drags slowly
+## forward and back across the ground twice. Face and ears: the AI's own face.
+static func _mood_sad(t: float, side: float, leg: String) -> Array:
+	var total := float(LENGTH.mood_sad)
+	var e := envelope(t, total, 0.8, 1.0)
+	var gate := smoothstep(1.3, 1.6, t) * (1.0 - smoothstep(3.4, 3.7, t))
+	var k := fposmod((t - 1.4) / 1.1, 1.0)
+	var lift := sin(k * PI) * gate
+	return [
+		["pony_neck1", "pitch", -14.0 * e],
+		["pony_neck2", "pitch", -8.0 * e],
+		["pony_head", "pitch", -8.0 * e],
+		["pony_head", "roll", side * 4.0 * e],
+		["pony_spine3", "pitch", -2.0 * e],
+		["pony_upperArm" + leg, "pitch", 9.0 * sin(k * TAU) * gate],
+		["pony_lowerArm" + leg, "pitch", 22.0 * lift],
+		["pony_wrist" + leg, "pitch", -26.0 * lift],
+	]
+
+
+## Shy (her AI's shy face): head dips and turns away to one side, tilted, while one forehoof rubs
+## the ground in three small scuffs, edging in toward the other.
+static func _mood_shy(t: float, side: float, leg: String) -> Array:
+	var total := float(LENGTH.mood_shy)
+	var e := envelope(t, total, 0.6, 0.9)
+	var gate := smoothstep(0.9, 1.1, t) * (1.0 - smoothstep(2.9, 3.1, t))
+	var k := fposmod((t - 1.0) / 0.66, 1.0)
+	var lift := sin(k * PI) * gate
+	return [
+		["pony_neck1", "pitch", -8.0 * e],
+		["pony_head", "pitch", -12.0 * e],
+		["pony_neck1", "yaw", side * 14.0 * e],
+		["pony_head", "yaw", side * 6.0 * e],
+		["pony_head", "roll", -side * 8.0 * e],
+		["pony_upperArm" + leg, "pitch", 4.0 * lift],
+		["pony_upperArm" + leg, "roll", -side * 4.0 * e],
+		["pony_lowerArm" + leg, "pitch", 30.0 * lift],
+		["pony_wrist" + leg, "pitch", -38.0 * lift],
+	]
+
+
+## Angry (her AI's angry or ponyrage face): head lowered as one forehoof comes up high, slammed down
+## (her body dips with it), then a toss of the head up and to the side.
+const ANGRY_STAMP := 0.62
+static func _mood_angry(t: float, side: float, leg: String) -> Array:
+	var total := float(LENGTH.mood_angry)
+	var e := envelope(t, total, 0.3, 0.7)
+	var lift := 0.0
+	if t < 0.5: lift = smoothstep(0.12, 0.5, t)
+	elif t < ANGRY_STAMP:
+		var k := (t - 0.5) / (ANGRY_STAMP - 0.5)
+		lift = 1.0 - k * k
+	elif t < ANGRY_STAMP + 0.15: lift = 0.1 * sin((t - ANGRY_STAMP) / 0.15 * PI)
+	var dip := _angry_dip(t)
+	var toss := sin(clampf((t - 0.9) / 0.8, 0.0, 1.0) * PI)
+	var low := smoothstep(0.0, 0.4, t) * (1.0 - smoothstep(0.8, 1.2, t))
+	return [
+		["pony_upperArm" + leg, "pitch", 18.0 * lift],
+		["pony_lowerArm" + leg, "pitch", 65.0 * lift],
+		["pony_wrist" + leg, "pitch", -70.0 * lift],
+		["pony_spine3", "pitch", -3.0 * dip],
+		["pony_neck1", "pitch", (-8.0 * low - 6.0 * dip + 14.0 * toss) * e],
+		["pony_head", "pitch", 8.0 * toss * e],
+		["pony_head", "roll", side * 12.0 * toss * e],
+		["pony_neck1", "yaw", -side * 8.0 * toss * e],
+	]
+
+
+static func _angry_dip(t: float) -> float:
+	return sin(clampf((t - ANGRY_STAMP) / 0.3, 0.0, 1.0) * PI)
+
+
+## Surprised (her AI's surprised or fearful face): a little startled hop, all four hooves tucked as
+## she pops up and lands a touch further back, head pulled up and back; then she settles.
+static func _mood_surprised(t: float, _side: float) -> Array:
+	var hop := _surprise_hop(t)
+	var back := _surprise_back(t)
+	var out: Array = []
+	for s in ["_L", "_R"]:
+		out.append(["pony_upperArm" + s, "pitch", 10.0 * hop])
+		out.append(["pony_lowerArm" + s, "pitch", 35.0 * hop])
+		out.append(["pony_wrist" + s, "pitch", -40.0 * hop])
+		out.append(["pony_legLower" + s, "pitch", 20.0 * hop])
+		out.append(["pony_tarsal" + s, "pitch", -20.0 * hop])
+	out.append(["pony_neck1", "pitch", 12.0 * back])
+	out.append(["pony_neck2", "pitch", 6.0 * back])
+	out.append(["pony_head", "pitch", 6.0 * back])
+	return out
+
+
+## The surprised hop (0..1, up and down again) and how far she has drawn back (0..1, held, eased off).
+static func _surprise_hop(t: float) -> float:
+	return sin(clampf((t - 0.05) / 0.4, 0.0, 1.0) * PI)
+
+
+static func _surprise_back(t: float) -> float:
+	return smoothstep(0.05, 0.25, t) * (1.0 - smoothstep(0.8, 2.0, t))
+
+
+## The full-body shake (a wet-dog shake; not for Celestia and Luna): head a little low, then a fast
+## side-to-side roll that runs from her head back along her spine to her hips, and a last flick of
+## the head. Eyes shut and tail flicks: main.gd.
+const SHAKE := Vector2(0.5, 2.6)
+const SHAKE_RATE := 5.5
+static func _shake(t: float, side: float) -> Array:
+	var total := float(LENGTH.shake)
+	var brace := envelope(t, total, 0.4, 0.6)
+	var s := shake_amount(t)
+	var out: Array = [["pony_neck1", "pitch", -6.0 * brace]]
+	# [bone, axis, degrees, lag in cycles]: the wave travels from her head back to her hips.
+	for wave: Array in [["pony_head", "roll", 22.0, 0.0], ["pony_head", "yaw", 10.0, 0.05],
+			["pony_neck2", "roll", 10.0, 0.05], ["pony_neck1", "yaw", 12.0, 0.1],
+			["pony_spine3", "roll", 7.0, 0.2], ["pony_spine2", "roll", 7.0, 0.28],
+			["pony_spine1", "roll", 6.0, 0.35], ["pony_hips", "roll", 5.0, 0.45]]:
+		out.append([wave[0], wave[1], side * float(wave[2]) * s * sin((t * SHAKE_RATE - float(wave[3])) * TAU)])
+	# A last quick flick of the head.
+	var flick := smoothstep(2.6, 2.7, t) * (1.0 - smoothstep(2.9, 3.05, t))
+	out.append(["pony_head", "roll", side * 10.0 * flick * sin(t * 8.0 * TAU)])
+	return out
+
+
+## How hard she is shaking (0..1).
+static func shake_amount(t: float) -> float:
+	return smoothstep(SHAKE.x, SHAKE.x + 0.3, t) * (1.0 - smoothstep(SHAKE.y - 0.4, SHAKE.y, t))
 
 
 ## The big stretch (the "downward pony"): her body tips forward about the hips so the chest
@@ -181,6 +456,8 @@ static func wing_lift(idle: String, t: float) -> Vector2:
 	return Vector2(e, 7.0 * flutter * e)
 
 
+## How far the paw's elbow bends (degrees) at rest in the scrape.
+static var PAW_BEND := 18.0
 ## Pawing the ground: one forehoof lifts and scrapes back three times, head low watching it.
 static func _paw(t: float, side: float, leg: String) -> Array:
 	var e := envelope(t, LENGTH.paw, 0.5, 0.6)
@@ -190,7 +467,9 @@ static func _paw(t: float, side: float, leg: String) -> Array:
 	if t > 0.5 and t < 3.2: scrape = sin(cycle * TAU)
 	return [
 		["pony_upperArm" + leg, "pitch", (16.0 + 14.0 * scrape) * e],
-		["pony_lowerArm" + leg, "pitch", (-22.0 - 10.0 * maxf(scrape, 0.0)) * e],
+		# Bent the way the game's joint limits allow (+, up to 94 degrees): at -22..-32 the hoof
+		# barely lifted, as the limit that way is -15 (2026-11-24, MODDING_NOTES.md).
+		["pony_lowerArm" + leg, "pitch", (PAW_BEND + 12.0 * maxf(scrape, 0.0)) * e],
 		["pony_wrist" + leg, "pitch", (-26.0 + 10.0 * scrape) * e],
 		["pony_hand" + leg, "pitch", -10.0 * e],
 		["pony_neck1", "pitch", -10.0 * e],
@@ -417,3 +696,267 @@ static func _shoe(t: float, side: float) -> Array:
 		["pony_wrist" + leg, "pitch", -45.0 * up],
 		["pony_hand" + leg, "pitch", -15.0 * up],
 	]
+
+
+## Hoof forelock sweep (dev 2026-11-24; earth ponies and pegasi): her head dips and turns toward
+## the side her forelock falls (main.gd picks `side`; a random one when it falls evenly), the
+## forehoof on that side comes up to her brow and sweeps the forelock out of her eyes twice, then
+## the hoof goes down and her head comes back up with a little settling shake. Neutral face.
+## Past the neck's and legs' joint limits (FREE_BONES): a hoof cannot reach her head otherwise.
+## FRINGE_POSE: [neck1 pitch, neck2 pitch, head pitch, neck yaw, head roll, upperArm pitch,
+## lowerArm pitch, wrist pitch, upperArm roll in, sweep roll out] (degrees), tuned in the lab.
+static var FRINGE_POSE := PackedFloat32Array([-16.0, -16.0, -14.0, -6.0, 4.0, 122.0, 15.0, -20.0, -5.0, 10.0])
+## Beats (seconds): head down and hoof up over FRINGE_UP, sweeps over FRINGE_SWEEPS, back down
+## over FRINGE_DOWN, the settle shake over FRINGE_SETTLE.
+const FRINGE_UP := Vector2(0.2, 1.4)
+const FRINGE_SWEEPS := Vector2(1.5, 3.9)
+const FRINGE_DOWN := Vector2(4.0, 4.9)
+const FRINGE_SETTLE := Vector2(4.7, 5.4)
+static func _hoof_fringe(t: float, side: float, leg: String) -> Array:
+	var q := FRINGE_POSE
+	var head := fringe_tuck(t)
+	var hoof := smoothstep(FRINGE_UP.x + 0.3, FRINGE_UP.y, t) * (1.0 - smoothstep(FRINGE_DOWN.x - 0.1, FRINGE_DOWN.y - 0.2, t))
+	# Two sweeps: in toward the middle of her brow, then out past her eye, the head leaning into it.
+	var sweep := 0.0
+	if t > FRINGE_SWEEPS.x and t < FRINGE_SWEEPS.y:
+		var k := (t - FRINGE_SWEEPS.x) / (FRINGE_SWEEPS.y - FRINGE_SWEEPS.x) * 2.0
+		sweep = 0.5 - 0.5 * cos(fposmod(k, 1.0) * TAU)
+	var settle := sin(clampf((t - FRINGE_SETTLE.x) / (FRINGE_SETTLE.y - FRINGE_SETTLE.x), 0.0, 1.0) * TAU * 2.0) * (1.0 - smoothstep(FRINGE_SETTLE.x, FRINGE_SETTLE.y, t))
+	return [
+		["pony_neck1", "pitch", q[0] * head],
+		["pony_neck2", "pitch", q[1] * head],
+		["pony_head", "pitch", q[2] * head],
+		["pony_neck1", "yaw", side * (q[3] * head - 4.0 * sweep * head)],
+		["pony_head", "roll", side * (q[4] * head + 3.0 * sweep * head) + side * 6.0 * settle],
+		["pony_upperArm" + leg, "pitch", q[5] * hoof],
+		["pony_lowerArm" + leg, "pitch", q[6] * hoof],
+		["pony_wrist" + leg, "pitch", q[7] * hoof],
+		["pony_upperArm" + leg, "roll", -side * (q[8] * hoof - q[9] * sweep * hoof)],
+	]
+
+
+## How much the hoof forelock sweep's hoof aims at her forelock (idle_pose.gd _reach_hoof): in
+## once the hoof is up, out before it comes down.
+static func fringe_reach(t: float) -> float:
+	return smoothstep(FRINGE_UP.y - 0.5, FRINGE_UP.y, t) * (1.0 - smoothstep(FRINGE_DOWN.x - 0.1, FRINGE_DOWN.x + 0.3, t))
+
+
+## How far down her forelock's stroke (0 top .. 1 brow) the hoof's sweep starts and ends up.
+static var FRINGE_LOW := 0.6
+## How far her head is tucked (0..1).
+static func fringe_tuck(t: float) -> float:
+	return smoothstep(FRINGE_UP.x, FRINGE_UP.y - 0.2, t) * (1.0 - smoothstep(FRINGE_DOWN.x, FRINGE_DOWN.y, t))
+
+
+## How much the back of her mane follows her skull at the full tuck (main.gd: the hair link).
+const FRINGE_FOLLOW := 0.8
+
+
+## Reseating her hat (dev 2026-11-24; earth ponies and pegasi in a hat): the hoof forelock sweep's
+## pose, but the hoof goes to the front of her hat's brim, tips it up and back (the hat moves with
+## it where it can: main.gd), holds a moment, and tugs it back down into place; then a little nod.
+## Beats (seconds): up over HAT_UP, tip over HAT_TIP, held until HAT_SEAT.x, reseated over
+## HAT_SEAT, down over HAT_DOWN, the nod over HAT_NOD.
+const HAT_UP := Vector2(0.2, 1.3)
+const HAT_TIP := Vector2(1.4, 2.0)
+const HAT_SEAT := Vector2(2.6, 3.2)
+const HAT_DOWN := Vector2(3.4, 4.2)
+const HAT_NOD := Vector2(4.0, 4.7)
+## As FRINGE_POSE, with a deeper tuck: her hat sits higher than her forelock.
+static var HAT_POSE := PackedFloat32Array([-28.0, -26.0, -20.0, -6.0, 4.0, 128.0, 10.0, -20.0, -5.0, 10.0])
+static func _hoof_hat(t: float, side: float, leg: String) -> Array:
+	var q := HAT_POSE
+	var head := smoothstep(HAT_UP.x, HAT_UP.y - 0.2, t) * (1.0 - smoothstep(HAT_DOWN.x, HAT_DOWN.y, t))
+	var hoof := smoothstep(HAT_UP.x + 0.3, HAT_UP.y, t) * (1.0 - smoothstep(HAT_DOWN.x - 0.1, HAT_DOWN.y - 0.2, t))
+	var nod := sin(clampf((t - HAT_NOD.x) / (HAT_NOD.y - HAT_NOD.x), 0.0, 1.0) * PI)
+	# Her head tips back a touch as the hat goes up, and dips into the tug down.
+	var tip := hat_tip(t)
+	return [
+		["pony_neck1", "pitch", q[0] * head],
+		["pony_neck2", "pitch", q[1] * head],
+		["pony_head", "pitch", q[2] * head + 4.0 * tip * head - 5.0 * nod],
+		["pony_neck1", "yaw", side * q[3] * head],
+		["pony_head", "roll", side * q[4] * head],
+		["pony_upperArm" + leg, "pitch", q[5] * hoof],
+		["pony_lowerArm" + leg, "pitch", q[6] * hoof],
+		["pony_wrist" + leg, "pitch", q[7] * hoof],
+		["pony_upperArm" + leg, "roll", -side * q[8] * hoof],
+	]
+
+
+## How far her hat is tipped up (0..1): up over HAT_TIP, held, back down over HAT_SEAT.
+static func hat_tip(t: float) -> float:
+	return smoothstep(HAT_TIP.x, HAT_TIP.y, t) * (1.0 - smoothstep(HAT_SEAT.x, HAT_SEAT.y, t))
+
+
+## How much the reseat's hoof aims at the brim (idle_pose.gd _reach_hoof).
+static func hat_reach(t: float) -> float:
+	return smoothstep(HAT_UP.y - 0.5, HAT_UP.y, t) * (1.0 - smoothstep(HAT_DOWN.x - 0.1, HAT_DOWN.x + 0.3, t))
+
+
+## Ear scratch (dev 2026-11-24; earth ponies, only when already sitting): she leans away from one
+## hind leg and tilts her head down toward it, the leg comes forward and up and the hoof scratches
+## quickly behind that ear (aimed by idle_pose.gd's reach solver, main.gd), eyes squeezed shut and
+## a hint of tongue; then the leg goes down and her head comes back up with a little ear shake.
+## Beats (seconds): lean and tilt over SCRATCH_LEAN, leg up over SCRATCH_UP, scratching over
+## SCRATCH (SCRATCH_RATE strokes a second), leg down over SCRATCH_DOWN.
+const SCRATCH_LEAN := Vector2(0.2, 1.0)
+const SCRATCH_UP := Vector2(0.6, 1.4)
+const SCRATCH := Vector2(1.5, 3.8)
+const SCRATCH_RATE := 5.0
+const SCRATCH_DOWN := Vector2(3.9, 4.7)
+## [neck1 pitch, neck1 yaw, head roll, head pitch, spine lean, femur pitch, tibia pitch,
+## legLower pitch, tarsal pitch] (degrees): the approach before the reach solver.
+static var SCRATCH_POSE := PackedFloat32Array([-55.0, -70.0, 60.0, -10.0, 14.0, 90.0, 0.0, 20.0, -20.0])
+static func _ear_scratch(t: float, side: float, _leg: String) -> Array:
+	var total := float(LENGTH.ear_scratch)
+	var q := SCRATCH_POSE
+	var lean := smoothstep(SCRATCH_LEAN.x, SCRATCH_LEAN.y, t) * (1.0 - smoothstep(SCRATCH_DOWN.x + 0.2, total - 0.3, t))
+	var up := scratch_leg(t)
+	var hind := "_R" if side > 0.0 else "_L"
+	var settle := sin(clampf((t - (total - 1.0)) / 0.6, 0.0, 1.0) * TAU * 1.5) * (1.0 - smoothstep(total - 0.6, total - 0.2, t))
+	return [
+		["pony_neck1", "pitch", q[0] * lean],
+		["pony_neck1", "yaw", side * q[1] * lean],
+		["pony_head", "roll", side * q[2] * lean + side * 5.0 * settle],
+		["pony_head", "pitch", q[3] * lean],
+		# Her weight onto the other haunch.
+		["pony_spine1", "roll", -side * q[4] * lean],
+		["pony_spine3", "roll", -side * q[4] * 0.6 * lean],
+		["pony_femur" + hind, "pitch", q[5] * up],
+		["pony_tibia" + hind, "pitch", q[6] * up],
+		["pony_legLower" + hind, "pitch", q[7] * up],
+		["pony_tarsal" + hind, "pitch", q[8] * up],
+	]
+
+
+## How far the scratching leg is up (0..1).
+static func scratch_leg(t: float) -> float:
+	return smoothstep(SCRATCH_UP.x, SCRATCH_UP.y, t) * (1.0 - smoothstep(SCRATCH_DOWN.x, SCRATCH_DOWN.y, t))
+
+
+## How hard she is scratching (0..1), and the stroke (-1..1) at `t`.
+static func scratching(t: float) -> float:
+	return smoothstep(SCRATCH.x - 0.1, SCRATCH.x + 0.2, t) * (1.0 - smoothstep(SCRATCH.y - 0.2, SCRATCH.y, t))
+
+
+static func scratch_stroke(t: float) -> float:
+	return sin((t - SCRATCH.x) * SCRATCH_RATE * TAU)
+
+
+## Turns put on after the reach solver (idle_pose.gd), so they move the leg it has aimed: the
+## ear scratch's strokes, the lower leg kicking quickly at the hock and stifle (SCRATCH_KICK
+## degrees) so the hoof rakes up and down behind her ear.
+const SCRATCH_KICK := Vector2(10.0, 16.0)
+static func after_reach(idle: String, t: float, side: float) -> Array:
+	if idle != "ear_scratch": return []
+	var hind := "_R" if side > 0.0 else "_L"
+	var k := scratch_stroke(t) * scratching(t)
+	return [
+		["pony_tibia" + hind, "pitch", SCRATCH_KICK.x * k],
+		["pony_legLower" + hind, "pitch", SCRATCH_KICK.y * k],
+	]
+
+
+## Grazing (dev 2026-11-24; every pony, princesses included, only on grass: main.gd): lying down
+## first (RESTING; standing, even past every limit, her mouth stops ~27 cm off the ground), her
+## head goes down to the grass in front of her, she
+## takes GRAZE_BITES nibbles (a quick tug up and back with each), lifts her head halfway and
+## chews, looking about, then her head comes back up. Mouth and chewing sounds: main.gd.
+## Beats (seconds): down over GRAZE_DOWN, a bite at each GRAZE_BITES, halfway up over GRAZE_LIFT,
+## chewing over GRAZE_CHEW (GRAZE_CHEW_RATE chews a second), back up over GRAZE_UP.
+const GRAZE_DOWN := Vector2(0.3, 1.5)
+const GRAZE_BITES := [1.8, 2.4, 3.0]
+const GRAZE_LIFT := Vector2(3.4, 4.2)
+const GRAZE_CHEW := Vector2(3.6, 6.2)
+const GRAZE_CHEW_RATE := 2.6
+const GRAZE_UP := Vector2(6.1, 6.9)
+## [neck1 pitch, neck2 pitch, head pitch, upperArm forward] (degrees) at the bottom; tuned in the
+## lab so her mouth reaches the grass.
+## [neck1, neck2, head pitch, forelegs forward, chest down] (degrees): a gentler neck than the
+## first try (100-120 curled her head under), her nose reaching forward and down from the poll,
+## her forelegs stretched out in front and her chest lowered toward them.
+static var GRAZE_POSE := PackedFloat32Array([-60.0, -15.0, -25.0, 40.0, 24.0])
+## Celestia and Luna lie with their heads higher.
+static var GRAZE_POSE_TALL := PackedFloat32Array([-100.0, -15.0, -10.0, 45.0, 35.0])
+static func _graze(t: float, side: float, leg: String, tall := false) -> Array:
+	var q := GRAZE_POSE_TALL if tall else GRAZE_POSE
+	var down := smoothstep(GRAZE_DOWN.x, GRAZE_DOWN.y, t) * (1.0 - 0.55 * smoothstep(GRAZE_LIFT.x, GRAZE_LIFT.y, t)) * (1.0 - smoothstep(GRAZE_UP.x, GRAZE_UP.y, t))
+	var tug := 0.0
+	for b: float in GRAZE_BITES: tug = maxf(tug, sin(clampf((t - b) / 0.35, 0.0, 1.0) * PI))
+	var look := sin(clampf((t - GRAZE_LIFT.y) / (GRAZE_UP.x - GRAZE_LIFT.y), 0.0, 1.0) * PI)
+	var chew := sin((t - GRAZE_CHEW.x) * GRAZE_CHEW_RATE * TAU) * graze_chewing(t)
+	var out: Array = [
+		["pony_neck1", "pitch", q[0] * down + 4.0 * tug],
+		["pony_neck2", "pitch", q[1] * down],
+		["pony_head", "pitch", q[2] * down + 6.0 * tug + 3.0 * chew],
+		["pony_neck1", "yaw", side * 14.0 * look * down],
+	]
+	var stretch := smoothstep(GRAZE_DOWN.x - 0.2, GRAZE_DOWN.y, t) * (1.0 - smoothstep(GRAZE_UP.x, GRAZE_UP.y, t))
+	for s in ["_L", "_R"]:
+		out.append(["pony_upperArm" + s, "pitch", q[3] * stretch])
+		out.append(["pony_lowerArm" + s, "pitch", -q[3] * 0.8 * stretch])
+	for b in ["pony_spine1", "pony_spine2", "pony_spine3"]:
+		out.append([b, "pitch", -q[4] / 3.0 * stretch])
+	return out
+
+
+## How hard she is chewing (0..1), and her jaw (0 shut .. 1 open) at `t`: a nibble at each bite,
+## then the chewing.
+static func graze_chewing(t: float) -> float:
+	return smoothstep(GRAZE_CHEW.x, GRAZE_CHEW.x + 0.3, t) * (1.0 - smoothstep(GRAZE_CHEW.y - 0.3, GRAZE_CHEW.y, t))
+
+
+static func graze_jaw(t: float) -> float:
+	var jaw := 0.0
+	for b: float in GRAZE_BITES: jaw = maxf(jaw, sin(clampf((t - b + 0.15) / 0.3, 0.0, 1.0) * PI))
+	return maxf(jaw, (0.5 + 0.5 * sin((t - GRAZE_CHEW.x) * GRAZE_CHEW_RATE * TAU)) * graze_chewing(t) * 0.9)
+
+
+## Celestia's and Luna's grazing (dev 2026-11-24, for a laugh): lying down, she plucks a tuft of
+## grass with her magic (main.gd, tuft.gd), shakes the soil off it, floats it up and pops it into
+## her mouth, then chews
+## it with her eyes shut and a smile. Her head only dips to look at it and leans in to take it.
+## Beats (seconds): the tuft pops out of the ground over TUFT_PLUCK, is shaken TUFT_SHAKES times
+## over TUFT_SHAKE (the soil falling off it), floats to her mouth over TUFT_FLOAT, goes in over
+## TUFT_POP (her jaw wide), and she chews over TUFT_CHEW.
+const TUFT_PLUCK := Vector2(1.0, 1.5)
+const TUFT_SHAKE := Vector2(1.6, 2.7)
+const TUFT_SHAKES := 3
+const TUFT_FLOAT := Vector2(2.8, 4.0)
+const TUFT_POP := Vector2(4.0, 4.3)
+const TUFT_CHEW := Vector2(4.4, 7.4)
+static func _graze_magic(t: float, side: float) -> Array:
+	var total := float(LENGTH.graze_magic)
+	var look := smoothstep(0.3, 1.0, t) * (1.0 - smoothstep(TUFT_FLOAT.x, TUFT_FLOAT.y, t))
+	var lean := sin(clampf((t - TUFT_FLOAT.y + 0.4) / 0.9, 0.0, 1.0) * PI)
+	var chew := sin((t - TUFT_CHEW.x) * GRAZE_CHEW_RATE * TAU) * tuft_chewing(t)
+	var pleased := envelope(t, total, 4.6, 1.0) * smoothstep(TUFT_CHEW.x, TUFT_CHEW.x + 0.4, t)
+	return [
+		["pony_neck1", "pitch", -14.0 * look - 6.0 * lean],
+		["pony_head", "pitch", -16.0 * look + 4.0 * lean + 3.0 * chew + 6.0 * pleased],
+		["pony_head", "roll", side * 6.0 * pleased],
+	]
+
+
+static func tuft_chewing(t: float) -> float:
+	return smoothstep(TUFT_CHEW.x, TUFT_CHEW.x + 0.3, t) * (1.0 - smoothstep(TUFT_CHEW.y - 0.3, TUFT_CHEW.y, t))
+
+
+## Her jaw (0..1): wide for the tuft going in, then the chewing.
+static func tuft_jaw(t: float) -> float:
+	var wide := smoothstep(TUFT_FLOAT.y - 0.5, TUFT_POP.x, t) * (1.0 - smoothstep(TUFT_POP.y, TUFT_POP.y + 0.15, t))
+	return maxf(wide, (0.5 + 0.5 * sin((t - TUFT_CHEW.x) * GRAZE_CHEW_RATE * TAU)) * tuft_chewing(t) * 0.8)
+
+
+## The tuft's shake (-1..1, side to side) and how much soil is left on it (1 .. 0, a third off
+## with each shake).
+static func tuft_shake(t: float) -> float:
+	if t < TUFT_SHAKE.x or t > TUFT_SHAKE.y: return 0.0
+	var k := (t - TUFT_SHAKE.x) / (TUFT_SHAKE.y - TUFT_SHAKE.x)
+	return sin(k * TUFT_SHAKES * TAU) * sin(k * PI)
+
+
+static func tuft_soil(t: float) -> float:
+	var k := clampf((t - TUFT_SHAKE.x) / (TUFT_SHAKE.y - TUFT_SHAKE.x), 0.0, 1.0)
+	return 1.0 - smoothstep(0.0, 1.0, k)

@@ -1,11 +1,11 @@
 # Idle Life
 
-- **Version:** 1.4.2
+- **Version:** 1.5.0
 - **By:** modChad
 - **Made for:** Home: Equestria 0.3.0-maredev
 - **Works on:** desktop and VR (nothing to press)
 
-Ponies standing about now and then do one of sixteen new idles, alongside the game's own stretches, yawns and hoof lifts.
+Ponies standing about now and then do one of twenty-one new idles, alongside the game's own stretches, yawns and hoof lifts. They also react with their whole body: tippy-taps when excited, and a sad, shy, angry or surprised reaction to match the face their AI gives a line.
 
 ## The idles
 
@@ -13,6 +13,11 @@ Ponies standing about now and then do one of sixteen new idles, alongside the ga
 | --- | --- | --- |
 | **Stretch** | Everypony | Tips forward into a long stretch, rump up, forehooves sliding out. Half the time a light stretch inside her joint limits, half the time a deeper one. Pegasi spread their wings out at about 45° with a little flutter. |
 | **Pawing the ground** | Everypony | Lifts a forehoof and scrapes it back three times, head low watching it. |
+| **Forelock sweep** | Earth ponies and pegasi | Dips her head and sweeps her forelock up and out of her eyes twice with a forehoof, then settles her mane with a little shake. Not Fluttershy (her long mane swallows the hoof) or ponies in a hat. |
+| **Hat reseat** | Earth ponies and pegasi in a hat | Dips her head, pushes her hat brim up with a forehoof, holds it, then tugs it back down into place with a nod. Applejack's hat tips up with her hoof. |
+| **Ear scratch** | Earth ponies, only when already sitting | Leans over, turns her head round and scratches behind one ear with a hind hoof, eyes squeezed shut and the tip of her tongue showing. Rarer than the others. |
+| **Grazing** | Everypony but Celestia and Luna, on grass | Lies down, stretches her nose to the grass for three nibbles, then chews, looking about, and gets up. |
+| **Magic grazing** | Celestia and Luna, on grass | Lies down, plucks a tuft of grass with her magic, shakes the soil off it, pops it into her mouth and chews it with a smug little smile. Remembered by onlookers. |
 | **Look round** | Everypony | Ears prick up, then she turns to look at something, a curious tilt, a second glance and back. |
 | **Wing stretch** | Pegasi | Opens her wings and reaches one up and back with a quiver, then the other, head turned away to give each room. |
 | **Wing preen** | Pegasi | Lies down or sits, brings one wing round to her muzzle and licks along the feathers. |
@@ -27,22 +32,41 @@ Ponies standing about now and then do one of sixteen new idles, alongside the ga
 | **Tending the sun** | Celestia, at sunrise and sunset | Flies up about 1.5 m, turns to face the sun and lights her horn with sparkles rising toward it, then lands. |
 | **Checking the moon** | Luna, at moonrise and moonset | The same for Luna and the moon, on nights with at least a quarter of the moon lit. |
 
-Each one plays on either side at random (the magic brush goes to whichever side her fringe sweeps).
+Each one plays on either side at random (the magic brush and the forelock sweep go to whichever side her fringe sweeps).
+
+## Reactions
+
+| Reaction | Who | When | What she does |
+| --- | --- | --- | --- |
+| **Tippy-taps** | Everypony | She gets excited (her AI's excitement, or petting her head, neck or mane), never during or just after a kiss | Eyes squeezed shut in a big grin, she stomps her forehooves in quick turns, the hind hooves following, with a little bounce and light hoof taps. An earth pony's own excited hoof raise gives way to it. A princess doing it is remembered. |
+| **Sad** | Everypony | Her AI gives a line a sad face | Head and neck sink, a slump, a slow scuff of one hoof. |
+| **Shy** | Everypony | A shy face | Head dips and turns away with a tilt while one forehoof scuffs the ground. |
+| **Angry** | Everypony | An angry or furious face | Lowers her head, stamps a forehoof hard (a stamp sound, deeper with a rumble for Celestia and Luna, whose stamp also shakes your view), then tosses her head. Celestia's is remembered. |
+| **Surprised** | Everypony | A surprised or fearful face | A little startled hop back, head pulled up, then she settles. |
+
+Each reaction plays at most once every 30 seconds per pony, and only when she's standing free to do it. Her face stays the one her AI chose.
 
 ## When they happen
 
 - **Who:** every pony. The game's own test for its fidgets decides when one may play: standing settled, going about her own day, not being talked to, touched, held or led, awake, and drawn in full detail.
 - **How often:** roughly every 18–45 seconds per pony, never the same idle twice in a row and never on top of one of the game's own fidgets.
 - **Night:** dozing and stargazing only happen from a little before sunset to a little after sunrise.
+- **Sitting:** the ear scratch only plays on an earth pony who has sat down by herself, roughly every 45–120 seconds of sitting, half the time.
+- **Grass:** both kinds of grazing only happen on grass.
 - **Interrupting:** talk to her, touch her or call her away and the idle fades out within half a second (one that sat or lay her down stands her back up).
 
 ## Install
 
-Put `idle-life-v1.4.2.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
+Put `idle-life-v1.5.0.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
 
 ## Things to know
 
-- Every movement stays inside the game's own joint limits, except the deep stretch's forelegs, which reach a little further so the hooves stay on the ground.
+- Most movements stay inside the game's own joint limits. The deep stretch's forelegs, the tippy-taps, the mood reactions, the forelock sweep, the hat reseat, the ear scratch and grazing go past them where a hoof or muzzle couldn't reach otherwise.
+- The forelock sweep, hat reseat and ear scratch aim the hoof at each pony's own forelock, hat brim or ear, so they fit every size of pony.
+- Fluttershy's and Applejack's manes hang from their chest and head with nothing at the neck; while they do an idle, the whole mane follows the head so it doesn't fold.
+- Only Applejack's hat tips when reseated: Braeburn's is baked into his hair mesh up close, and wardrobe hats are fitted to the head.
+- The sounds (taps, stamps) are placeholders made from the game's own hoofsteps; grazing uses the game's own chewing sounds. Each plays the grass or stone version for what she stands on.
+- The view shake on Celestia's and Luna's stamp also happens in VR (untested in a headset).
 - The magic brush skips ponies without a fringe or who wouldn't brush one: King Sombra, Tempest Shadow, Shining Armor, Prince Blueblood, Jackpot, Night Light, Silver Spanner, Comet Tail and Pokey Pierce.
 - The wing preen and wing stretch skip Celestia and Luna for now: the game's open wings don't fit their bodies yet.
 - The tea sets, scroll rollers, quills and inkwells are small models (about 440 triangles a tea set, under 750 a scroll set). The parchment and its writing are drawn by the mod: looping lines, not real text.
@@ -50,10 +74,12 @@ Put `idle-life-v1.4.2.pck` in the game's `mods` folder and switch it on in **Set
 - The sun and moon checks use the game's own flight to take off, hover and land. While she's up, only being spoken to or held cuts it short.
 - Tea finds her lips from her face rig: the princesses' body `MOUNT_MOUTH` is in the wrong place (a game bug).
 - Everything scales with the pony's size.
-- **Remembered:** the scroll, writing, tea, shoe check, sun, moon and dozing off are written to the game's memory of witnessed events about halfway through (one line, e.g. "Princess Celestia conjured a scroll with her magic, read it through and made it vanish again."), for the pony herself and AI ponies within 10 m. At most one per pony every 3 minutes. Ponies can then mention it in conversation.
+- **Remembered:** only out-of-character moments are written to the game's memory of witnessed events: a princess doing the tippy-taps or the magic grazing, and Celestia's angry stamp (one line, e.g. "Princess Celestia got so excited she did a little tippy-tap dance on the spot..."), for the pony herself and AI ponies within 10 m, at most one per pony every 3 minutes. Ponies can then mention it in conversation.
 - Switching the mod off hands back anything it was holding (eyes, ears, mouth, wings, magic, gaze).
 
 ## Changes
+
+- **1.5.0 (2026-11-24):** new reactions: excited tippy-taps and sad, shy, angry and surprised body reactions, with hoof sounds and a view shake for Celestia's and Luna's stamp. New idles: forelock sweep, hat reseat, ear scratch (sitting earth ponies), grazing, and Celestia's and Luna's magic grazing. The pawing hoof now lifts properly (about 15 cm, was about 6). The scroll, writing, tea, shoe, sun, moon and dozing are no longer remembered (fewer words in every pony's memory).
 
 - **1.4.2:** With the Horn Glow mod, the sparks leaving her horn (magic sparkle, sun and moon) are quiet puffs of sparkles, with no round disc or cast sound. Her horn itself glows the Horn Glow way.
 
