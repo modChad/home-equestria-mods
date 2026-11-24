@@ -1,7 +1,8 @@
 # Grab Perf
 
 - **Version:** 1.0.0
-- **Made for:** Home: Equestria 0.3.0-maredev
+- **By:** modChad
+- **Made for:** Home: Equestria 0.3.1-maredev
 - **Works on:** VR (Quest standalone and PC VR); does nothing on desktop
 
 Stops the frame-rate drop while your hands are clenched into fists in VR.

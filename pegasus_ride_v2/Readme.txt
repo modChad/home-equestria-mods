@@ -1,13 +1,13 @@
 # Pegasus Ride
 
-Fly through Equestria on the back of any pegasus — to a named place, in
-circles, or wherever. A mod for **Home: Equestria 0.3.0-maredev**.
+- **Version:** 2.2.1
+- **By:** modChad
+- **Made for:** Home: Equestria 0.3.1-maredev
+- **Original:** by Anon, adapted by modChad
+- **Folder:** `res://mods/pegasus_ride_v2/` (entry `main.gd`)
 
-| | |
-|---|---|
-| Version | 2.2.1 |
-| Folder | `res://mods/pegasus_ride_v2/` |
-| Entry | `main.gd` |
+Fly through Equestria on the back of any pegasus — to a named place, in
+circles, or wherever.
 
 ---
 

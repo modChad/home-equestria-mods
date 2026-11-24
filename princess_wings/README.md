@@ -1,7 +1,8 @@
 # Princess Wings
 
 - **Version:** 1.0.0
-- **Made for:** Home: Equestria 0.3.0-maredev
+- **By:** modChad
+- **Made for:** Home: Equestria 0.3.1-maredev
 - **Works on:** desktop and VR (nothing to press)
 
 Celestia's and Luna's open wings now grow from their shoulder blades, just behind the withers, instead of floating on top of the middle of the back.

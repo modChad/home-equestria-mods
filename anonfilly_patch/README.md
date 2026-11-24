@@ -1,8 +1,9 @@
 # Anonfilly lighter hair
 
 - **Version:** 1.0.0
-- **Author:** modChad
-- **For:** Anonfilly (NPC) 1.0.0
+- **By:** modChad
+- **Made for:** Home: Equestria 0.3.1-maredev
+- **Needs:** Anonfilly (NPC) 1.0.0
 - **Works on:** desktop and VR
 
 Anonfilly's mane and tail with far fewer triangles, for better framerates on Quest 3. Same look, rig and colours.

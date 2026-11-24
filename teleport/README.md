@@ -1,7 +1,8 @@
 # Teleport
 
 - **Version:** 1.0.0
-- **Made for:** Home: Equestria 0.3.0-maredev
+- **By:** modChad
+- **Made for:** Home: Equestria 0.3.1-maredev
 - **Works on:** desktop and VR
 
 Adds teleporting to the game's debug console.

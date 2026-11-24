@@ -2,7 +2,7 @@
 
 - **Version:** 1.1.0
 - **By:** modChad
-- **Made for:** Home: Equestria 0.3.0-maredev
+- **Made for:** Home: Equestria 0.3.1-maredev
 - **Needs:** Idle Life
 - **Private:** a debug tool, left out of the public download table.
 

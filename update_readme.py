@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Keeps the Mods table in .github/README.md in step with the built packs.
 
-For each mod folder with a mod.json (not dinnerbone, nor one marked "private": true), finds its pack in release_packs/
+For each mod folder with a mod.json (not dinnerbone, nor one marked "private": true or "wip": true), finds its pack in release_packs/
 (<folder with _ as ->-v<version>.pck) and sets that row's Version and Download cells. A mod
 with a pack but no row gets a new row, its "What it does" taken from mod.json. The hand-written
 "What it does" text of existing rows is left alone. Run by build_packs.sh after each build:
@@ -23,6 +23,7 @@ def mods():
         if d in SKIP or d.startswith(".") or not os.path.isfile(manifest): continue
         with open(manifest) as f: m = json.load(f)
         if m.get("private"): continue   # debug tools and the like: not in the public table
+        if m.get("wip"): continue       # in development: not released
         out[d] = m
     return out
 

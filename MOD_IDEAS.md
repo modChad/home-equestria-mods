@@ -18,19 +18,20 @@ All made for game 0.3.0-maredev. Packs are in `release_packs/`.
 | Balloon Boarding | 1.0.0 | Carried ponies stay aboard the balloon; followers who stop short are helped in. |
 | Pegasus Ride | 2.2.1 | Someone else's mod, adapted: ride a winged friend, princesses included. |
 | Teleport | 1.0.0 | `places` and `tp` debug commands. |
-| Idle Life | 1.4.2 | Sixteen idles, plus princess scroll, quill, tea, shoe, sun and moon idles; remembered by onlookers. |
+| Idle Life | 1.5.0 | Twenty-one idles (new: forelock sweep, hat reseat, ear scratch, grazing, princess magic grazing) plus tippy-taps and sad/shy/angry/surprised body reactions, with hoof sounds; princesses' out-of-character moments remembered. |
 | Princess Teleport | 1.1.0 | Celestia, Luna and Twilight teleport you both to far places, when you ask (or in danger). |
 | Princess Wings | 1.0.0 | Moves the princesses' open wings onto their shoulder blades (fix handed to the dev). |
 | Kissing | 1.2.8 | Hold K to kiss; feelings build; rearing into your arms (Shift+K toggles); clipping guards. |
 | Fishing | 0.4.1 | Readable pier fishing, five species plus rares and junk, live-well pail, Angler's Log, pony reactions. |
 | Horn Glow | 1.1.0 | Horn magic glows around the horn itself, with a soft hum. |
 | Item Spawn | 1.0.0 | `is list` / `is add` debug commands to put any item in the briefcase. |
-| Fluttershy's Cottage | 1.2.0 | Replaces the cottage with Discopears' full room (CC BY-SA 4.0) and a new exterior; ponies route through it. |
+| Fluttershy's Cottage | 1.4.2 | Replaces the cottage with Discopears' full room (CC BY-SA 4.0) and a show-style exterior (mound, porch, chimney, lattice windows); dressed loft with her own bed; ponies route through it. |
 | Briefcase Rescue | 1.0.0 | Repairs briefcases and saves refused because of items from a removed mod. |
 | Russian Ponies | 1.0.0 | Ponies understand and always speak Russian (typed chat; voices and speech input unsupported). Untested with a real model. |
+| Pathfinding Fix | 1.0.0 | Road-aware routes, bigger detours, size-matched crowd avoidance, Celestia fits house doors (1.85 m); lighter settings on Quest. |
 | Typing Lock | 1.0.0 | While a text box has focus, all game hotkeys are off and Anon stays put (no more WASD/Q standing you up mid-chat). |
 
-Private/debug: **Idle Life Debug** (`idle_life_debug`, `idle` console command), never in release_packs or the download table.
+Private/debug: **Idle Life Debug** 1.1.0 (`idle_life_debug`, `idle` console command, `idle excite`), never in release_packs or the download table.
 
 ## Next
 

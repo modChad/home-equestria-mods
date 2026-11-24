@@ -2,7 +2,7 @@
 
 - **Version:** 1.1.1
 - **By:** modChad
-- **Made for:** Home: Equestria 0.3.0-maredev
+- **Made for:** Home: Equestria 0.3.1-maredev
 
 A unicorn's horn magic now glows around the horn itself, instead of as a round disc of light floating in front of it.
 

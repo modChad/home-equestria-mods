@@ -1,7 +1,8 @@
 # Typing Lock
 
 - **Version:** 1.0.0
-- **Made for:** Home: Equestria 0.3.0-maredev
+- **By:** modChad
+- **Made for:** Home: Equestria 0.3.1-maredev
 - **Works on:** desktop (VR attempted, not tested)
 
 While you type in any text box (the Enter chat, the ` console, search fields), every game hotkey is switched off and Anon stays exactly where he is. Typing "Wait" no longer walks you forward, and typing "quick" no longer gets you up from a bed, a seat or the grass.

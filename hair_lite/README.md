@@ -1,7 +1,7 @@
 # Lighter Hair
 
 - **Version:** 1.0.1
-- **Author:** modChad
+- **By:** modChad
 - **Made for:** Home: Equestria 0.3.1-maredev
 - **Works on:** desktop and VR
 

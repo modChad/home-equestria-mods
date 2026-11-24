@@ -2,7 +2,7 @@
 # Builds each mod's .pck into mods/release_packs/ as <name>-v<version>.pck, the name being the mod's
 # folder with _ as - and the version from its mod.json (mods/idle_life 1.2.0 ->
 # mods/release_packs/idle-life-v1.2.0.pck). A pack of the same name there is replaced.
-#   ./build_packs.sh                     every mod here
+#   ./build_packs.sh                     every mod here (not "wip": true ones)
 #   ./build_packs.sh grooming teleport   just these
 # The game's build tool packs every file in a mod's folder, so any .pck still in it (older
 # packs) is set aside in mods/.build_aside/ while the new one builds and put back afterwards.
@@ -15,7 +15,10 @@ GODOT="${GODOT:-$PROJECT/tools/godot-4.5/Godot_v4.5-stable_linux.x86_64}"
 ASIDE="$MODS/.build_aside"
 mkdir -p "$OUT"
 if [ $# -gt 0 ]; then ids=("$@"); else
-	ids=(); for f in "$MODS"/*/mod.json; do id="$(basename "$(dirname "$f")")"; [ "$id" = dinnerbone ] || ids+=("$id"); done
+	ids=(); for f in "$MODS"/*/mod.json; do id="$(basename "$(dirname "$f")")"; [ "$id" = dinnerbone ] && continue
+		# In-development mods ("wip": true in mod.json) only build when named: ./build_packs.sh <id>
+		if grep -q '"wip"[[:space:]]*:[[:space:]]*true' "$f"; then echo "skipped $id (wip)"; continue; fi
+		ids+=("$id"); done
 fi
 failed=0
 for id in "${ids[@]}"; do

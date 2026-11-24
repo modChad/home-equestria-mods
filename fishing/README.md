@@ -1,7 +1,8 @@
 # Fishing
 
 - **Version:** 0.7.1
-- **Made for:** Home: Equestria 0.3.0-maredev
+- **By:** modChad
+- **Made for:** Home: Equestria 0.3.1-maredev
 - **Works on:** desktop (VR controls included but untested)
 
 The river pier's fishing, made readable, with five fish species.

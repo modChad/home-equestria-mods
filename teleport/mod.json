@@ -4,6 +4,6 @@
 	"version": "1.0.0",
 	"author": "modChad",
 	"description": "Adds tp and places to the debug console: list the world's places, then jump to one by name or number, to a pony, or to coordinates.",
-	"game_version": "0.3.0-maredev",
+	"game_version": "0.3.1-maredev",
 	"entry": "res://mods/teleport/main.gd"
 }

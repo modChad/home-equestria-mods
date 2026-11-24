@@ -1,7 +1,8 @@
 # Pin the Tail on the Pony
 
 - **Version:** 0.4.2
-- **Author:** modChad
+- **By:** modChad
+- **Made for:** Home: Equestria 0.3.1-maredev
 - **Works on:** desktop and VR
 
 A party game poster on the west wall of Sugarcube Corner. Put the blindfold on, get spun around, and pin the tail. Your best shot is chalked up beside it. Ponies know the game, call out warmer or colder, tease bad pins, and can have a go themselves.

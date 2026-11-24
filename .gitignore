@@ -4,3 +4,8 @@ dinnerbone/
 MOD_IDEAS.md
 _to_delete/
 modded elsewhere/
+
+# In development: not released, kept out of git (also "wip": true in mod.json)
+fluttershy_cottage/
+Cottage/
+milky_way/

@@ -1,6 +1,8 @@
 # Pathfinding Fix
 
-By modChad. Version 1.1.0, for game 0.3.0.
+- **Version:** 1.1.0
+- **By:** modChad
+- **Made for:** Home: Equestria 0.3.1-maredev
 
 Ponies pick better routes:
 

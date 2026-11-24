@@ -2,7 +2,7 @@
 
 - **Version:** 1.5.0
 - **By:** modChad
-- **Made for:** Home: Equestria 0.3.0-maredev
+- **Made for:** Home: Equestria 0.3.1-maredev
 - **Works on:** desktop and VR (nothing to press)
 
 Ponies standing about now and then do one of twenty-one new idles, alongside the game's own stretches, yawns and hoof lifts. They also react with their whole body: tippy-taps when excited, and a sad, shy, angry or surprised reaction to match the face their AI gives a line.

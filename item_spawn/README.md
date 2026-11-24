@@ -1,7 +1,8 @@
 # Item Spawn
 
 - **Version:** 1.0.0
-- **Made for:** Home: Equestria 0.3.0-maredev
+- **By:** modChad
+- **Made for:** Home: Equestria 0.3.1-maredev
 - **Works on:** desktop (VR should work but is untested)
 
 Adds item spawning to the game's debug console.

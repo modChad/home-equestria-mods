@@ -1,14 +1,15 @@
 # Grooming
 
-A Home: Equestria mod that lets you groom ponies: brush their mane and tail, brush their coat, and preen a pegasus's or alicorn's wings. Each action has its own animation, and finishing a grooming brings you and the pony closer.
-
 - **Version:** 1.0.4
-- **Made for:** Home: Equestria 0.3.0-maredev
+- **By:** modChad
+- **Made for:** Home: Equestria 0.3.1-maredev
 - **Works on:** desktop and VR
+
+A Home: Equestria mod that lets you groom ponies: brush their mane and tail, brush their coat, and preen a pegasus's or alicorn's wings. Each action has its own animation, and finishing a grooming brings you and the pony closer.
 
 ## Install
 
-1. Put `grooming-v1.0.3.pck` in your mods folder. In game, **Settings → Mods → Open mods folder** opens it.
+1. Put `grooming-v1.0.4.pck` in your mods folder. In game, **Settings → Mods → Open mods folder** opens it.
 
    | System | Mods folder |
    | --- | --- |

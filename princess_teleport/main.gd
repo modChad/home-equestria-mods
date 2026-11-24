@@ -31,17 +31,19 @@ const WOLF_NEAR := 45.0
 const HABITAT := preload("res://world/life/everfree_habitat.gd")
 
 ## Asking to be teleported. Words, not just "take me": a plain "take me home" is walked.
-const ASK := "\\b(teleport\\w*|tele-?port\\w*|zap|poof|blink|beam|warp|magic\\s+(us|me)|use\\s+(your\\s+)?magic|with\\s+(your\\s+)?magic)\\b"
+const ASK := "\\b(teleport\\w*|tele-?port\\w*|zap|poof|blink|beam|warp|magic\\s+(us|me)|use\\s+(your\\s+)?magic|with\\s+(your\\s+)?magic)\\b|телепорт\\w*|магией|с\\s+помощью\\s+(твоей\\s+|своей\\s+)?магии|наколдуй\\w*"
 ## "Don't teleport", "no magic", "I'd rather walk": no.
-const REFUSE := "\\b(don'?t|do\\s+not|never|no|not|without|rather\\s+not|no\\s+need\\s+to)\\W+(\\w+\\W+){0,3}?(teleport\\w*|zap|poof|blink|beam|warp|magic)\\b|\\b(rather|prefer\\w*|let'?s|we\\s+can|i'?ll)\\s+(to\\s+)?walk"
+const REFUSE := "\\b(don'?t|do\\s+not|never|no|not|without|rather\\s+not|no\\s+need\\s+to)\\W+(\\w+\\W+){0,3}?(teleport\\w*|zap|poof|blink|beam|warp|magic)\\b|\\b(rather|prefer\\w*|let'?s|we\\s+can|i'?ll)\\s+(to\\s+)?walk|\\b(не|нет|без|никогда)\\W+(\\w+\\W+){0,3}?(телепорт\\w*|маги\\w*)\\b|\\b(давай|лучше|пойд[её]м)\\s+(\\w+\\s+)?пешком\\b|\\b(прогуляемся|пройд[её]мся)\\b"
 ## Asking, not refusing: "why don't you teleport us?", "can't you just zap us home?".
-const ASKING_NOT := "\\b(why\\s+(don'?t|not)(\\s+you|\\s+we)?|can'?t\\s+you|couldn'?t\\s+you|won'?t\\s+you|wouldn'?t\\s+you|isn'?t\\s+it\\s+faster\\s+to)\\b"
+const ASKING_NOT := "\\b(why\\s+(don'?t|not)(\\s+you|\\s+we)?|can'?t\\s+you|couldn'?t\\s+you|won'?t\\s+you|wouldn'?t\\s+you|isn'?t\\s+it\\s+faster\\s+to)\\b|\\b(почему\\s+бы\\s+(тебе\\s+|нам\\s+)?не|почему\\s+(ты\\s+|мы\\s+)?не|не\\s+мог(ла|ли|ешь)?\\s+бы|(ты\\s+)?не\\s+можешь|разве\\s+(ты\\s+)?не|а\\s+нельзя|нельзя\\s+ли|может\\w*(\\s+ты)?)\\b"
 ## Saying yes to her offer.
-const YES := "^\\W*(yes|yeah|yep|yup|sure|ok|okay|alright|all\\s+right|please|do\\s+it|go\\s+ahead|let'?s(\\s+do\\s+it|\\s+go)?|i'?d\\s+(like|love)\\s+that|sounds\\s+good|absolutely|of\\s+course)\\b"
+const YES := "^\\W*(yes|yeah|yep|yup|sure|ok|okay|alright|all\\s+right|please|do\\s+it|go\\s+ahead|let'?s(\\s+do\\s+it|\\s+go)?|i'?d\\s+(like|love)\\s+that|sounds\\s+good|absolutely|of\\s+course)\\b|^\\W*(да|ага|угу|конечно|давай|хорошо|ладно|ок|окей|пожалуйста|вперёд|вперед|согласен|согласна|с\\s+удовольствием|ещё\\s+бы|еще\\s+бы|поехали|телепортируй\\w*|звучит\\s+(хорошо|здорово)|было\\s+бы\\s+здорово|почему\\s+бы\\s+и\\s+нет)\\b"
 ## A yes that's really a no.
-const BUT_NO := "\\b(no|not|nope|don'?t|rather\\s+walk|walk)\\b"
+const BUT_NO := "\\b(no|not|nope|don'?t|rather\\s+walk|walk)\\b|\\b(нет|не|неа|пешком)\\b"
+## Not a no after all: "почему бы и нет" (why not), "не вопрос" (no problem).
+const NOT_NO := "почему\\s+бы\\s+и\\s+нет|не\\s+вопрос|без\\s+проблем"
 ## Her line offering it.
-const OFFER := "\\b(teleport\\w*|tele-?port\\w*|blink|poof|zap|warp)\\b|\\bmagic\\s+(us|you)\\b"
+const OFFER := "\\b(teleport\\w*|tele-?port\\w*|blink|poof|zap|warp)\\b|\\bmagic\\s+(us|you)\\b|телепорт\\w*|(перенесу|перемещу)\\s+(нас|тебя)|магией"
 
 var _hooked: Dictionary = {}     # executor -> id
 var _busy := false
@@ -101,7 +103,7 @@ func _now() -> float:
 
 func _regex(pattern: String) -> RegEx:
 	if not _rx.has(pattern):
-		var rx := RegEx.new(); rx.compile("(?i)" + pattern); _rx[pattern] = rx
+		var rx := RegEx.new(); rx.compile("(*UCP)(?i)" + pattern); _rx[pattern] = rx  # UCP: \\b and \\w know Cyrillic.
 	return _rx[pattern]
 
 
@@ -146,7 +148,7 @@ func _recent(content: String) -> bool:
 func agrees(line: String, offer: String) -> bool:
 	if _regex(REFUSE).search(_regex(ASKING_NOT).sub(line, "", true)) != null: return false
 	if _regex(ASK).search(line) != null: return true
-	return _regex(OFFER).search(offer) != null and _regex(YES).search(line) != null and _regex(BUT_NO).search(line) == null
+	return _regex(OFFER).search(offer) != null and _regex(YES).search(line) != null and _regex(BUT_NO).search(_regex(NOT_NO).sub(line, "", true)) == null
 
 
 ## Danger: a timberwolf near Anon or her, or Anon in the Everfree after dark.

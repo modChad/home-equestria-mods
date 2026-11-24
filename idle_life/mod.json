@@ -4,6 +4,6 @@
 	"version": "1.5.0",
 	"author": "modChad",
 	"description": "Twenty-one new idles and whole-body reactions. Ponies stretch, paw the ground, look round, sweep their forelock or reseat their hat with a hoof, graze, and (sitting earth ponies) scratch an ear with a hind hoof; pegasi stretch and preen their wings; unicorns brush their fringe and sparkle with magic; at night they doze and stargaze. Excited ponies do the tippy-taps, and ponies react to their AI's sad, shy, angry and surprised faces with their body. Celestia and Luna also read and write scrolls, take tea, check a shoe, pluck grass with their magic, and tend the sun and moon. Onlookers remember the princesses' out-of-character moments.",
-	"game_version": "0.3.0-maredev",
+	"game_version": "0.3.1-maredev",
 	"entry": "res://mods/idle_life/main.gd"
 }

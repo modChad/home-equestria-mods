@@ -1,6 +1,8 @@
 # Briefcase Rescue
 
-**Version:** 1.0.0 · **Author:** modChad · **Game:** 0.3.0-maredev
+- **Version:** 1.0.0
+- **By:** modChad
+- **Made for:** Home: Equestria 0.3.1-maredev
 
 Fixes briefcases and saves the game refuses after a mod that added items is removed incorrectly
 (for example Watch Party's TVs and remote). Without it the game sets the briefcase aside, gives

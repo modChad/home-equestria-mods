@@ -4,6 +4,6 @@
 	"version": "1.1.0",
 	"author": "modChad",
 	"description": "Ponies pick better routes: they use roads and trails instead of cutting across the nearest tiles, find their way around rivers and lakes faster, keep a personal space that matches their size, Celestia can finally walk into ordinary houses, and roofs and attics no longer hide house floors from pathfinding.",
-	"game_version": "0.3.0-maredev",
+	"game_version": "0.3.1-maredev",
 	"entry": "res://mods/pathfinding_fix/main.gd"
 }

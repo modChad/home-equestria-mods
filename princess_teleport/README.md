@@ -1,7 +1,8 @@
 # Princess Teleport
 
-- **Version:** 1.1.0
-- **Made for:** Home: Equestria 0.3.0-maredev
+- **Version:** 1.2.0
+- **By:** modChad
+- **Made for:** Home: Equestria 0.3.1-maredev
 - **Works on:** desktop and VR
 
 Princess Celestia, Princess Luna and Twilight Sparkle can teleport, and take you with them.
@@ -17,9 +18,11 @@ Stand next to one of them and ask her to teleport you somewhere far, e.g. "Can y
 - **Stay close.** You need to be within a few metres of her when she agrees. If you're further away, she walks there instead.
 - **Where she can go.** She can teleport anywhere she could walk you to: the world's regions (Ponyville, Canterlot, Sweet Apple Acres…), landmarks and houses.
 
+- **In Russian too (1.2.0).** Asking, yes and no also work in Russian ("телепортируй нас", "да", "давай пешком"), for use with Russian Ponies.
+
 ## Install
 
-Put `princess-teleport-v1.1.0.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
+Put `princess-teleport-v1.2.0.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
 
 ## Things to know
 

@@ -4,6 +4,6 @@
 	"version": "1.0.0",
 	"author": "modChad",
 	"description": "Repairs briefcases and saves the game refused because they held items from a removed mod (such as Watch Party TVs). Unknown items are deleted, everything else is kept, and set-aside briefcases and saves are restored.",
-	"game_version": "0.3.0-maredev",
+	"game_version": "0.3.1-maredev",
 	"entry": "res://mods/briefcase_rescue/main.gd"
 }

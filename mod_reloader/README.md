@@ -1,6 +1,8 @@
 # Mod Reloader
 
-**Version:** 1.0.0 · **Author:** modChad · **Game:** 0.3.1-maredev
+- **Version:** 1.0.0
+- **By:** modChad
+- **Made for:** Home: Equestria 0.3.1-maredev
 
 Most mods switch on and off at once, but some (ones that change game data, extend scripts or
 replace game files) only apply after a restart. Mod Reloader turns that into one click.

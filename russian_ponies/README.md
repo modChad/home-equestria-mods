@@ -1,7 +1,8 @@
 # Russian Ponies
 
 - **Version:** 1.0.0
-- **Made for:** Home: Equestria 0.3.0-maredev
+- **By:** modChad
+- **Made for:** Home: Equestria 0.3.1-maredev
 - **Works on:** desktop and VR (nothing to press)
 
 Ponies understand Russian and always answer in Russian. Type to them in Russian and they talk back in it.

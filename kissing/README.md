@@ -1,7 +1,8 @@
 # Kissing
 
 - **Version:** 1.2.11
-- **Made for:** Home: Equestria 0.3.0-maredev
+- **By:** modChad
+- **Made for:** Home: Equestria 0.3.1-maredev
 - **Works on:** desktop (hold K) and VR (lean in)
 
 Kiss a pony without carrying her first. Before, the game's kiss only started once your mouth touched her face, which standing up only really happened while she was in your arms.
