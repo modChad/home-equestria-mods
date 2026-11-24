@@ -1,6 +1,6 @@
 # Lighter Hair
 
-- **Version:** 1.0.0
+- **Version:** 1.0.1
 - **Author:** modChad
 - **Made for:** Home: Equestria 0.3.1-maredev
 - **Works on:** desktop and VR
@@ -19,11 +19,11 @@ Every pony's mane and tail with far fewer triangles, for better framerates (made
 | Anon (pony, stallion) | 14,737 | 4,711 |
 | Background ponies | any mane or tail over 6,000 halved (58 of 129) | |
 
-The Mane 6's far-away hair (past 12 m) is halved too.
+The Mane 6's far-away hair (past 12 m) is halved too, and so is Applejack's hat (2,668 to 1,088 triangles).
 
 ## Install
 
-Put `hair-lite-v1.0.0.pck` in the game's `mods` folder and switch it on in **Settings → Mods**, then restart the game.
+Put `hair-lite-v1.0.1.pck` in the game's `mods` folder and switch it on in **Settings → Mods**, then restart the game.
 
 ## Things to know
 
@@ -34,3 +34,7 @@ Put `hair-lite-v1.0.0.pck` in the game's `mods` folder and switch it on in **Set
 
 1. From the project root: `godot --headless --xr-mode off --path . --script res://mods/hair_lite/tools/reduce_hair.gd -- <absolute path to mods/hair_lite/tools/hair_list.txt>` (writes `build/hair_lite/stage/`).
 2. `mods/build_packs.sh hair_lite` (packs with `tools/pack.gd`).
+
+## Changes
+
+- **1.0.1:** Applejack's hat halved (2,668 to 1,088 triangles).

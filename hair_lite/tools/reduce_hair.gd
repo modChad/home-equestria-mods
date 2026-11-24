@@ -1,11 +1,12 @@
 extends SceneTree
-## Lighter Hair 1.0.0 (modChad). Run from the project root:
+## Lighter Hair 1.0.1 (modChad). Run from the project root:
 ##   godot --headless --xr-mode off --path . --script res://mods/hair_lite/tools/reduce_hair.gd -- <absolute path to tools/hair_list.txt>
 ## then tools/pack.gd. hair_list.txt: every hair scene the identities name (anon_stallion_dash_hair is unused).
 ## Reduces every pony hair (mane/tail) mesh with Godot's simplifier and writes the results under
 ## STAGE, mirroring the game path each one replaces. Tails keep every vertex (tail contacts and
 ## anchors index them); manes drop unused vertices. Prints one TSV row per mesh changed.
 const STAGE := "res://build/hair_lite/stage/"
+const HAT_RATIO := 0.5   # Applejack's hat (2,668 tris); a quarter shows on the brim curl
 var done := {}   # mesh instance id -> true
 var rows := []
 
@@ -51,11 +52,12 @@ func _scene(src: String, game_path: String) -> void:
 	for n in root.find_children("*", "MeshInstance3D", true, false):
 		var mi := n as MeshInstance3D
 		var nm := String(mi.name)
-		if not ("Mane" in nm or "Tail" in nm) or not mi.mesh is ArrayMesh: continue
+		var hat := nm == "ApplejackHat" and _group(src) == "mane6"   # 1.0.1: unskinned, on a BoneAttachment3D
+		if not ("Mane" in nm or "Tail" in nm or hat) or not mi.mesh is ArrayMesh: continue
 		if done.has(mi.mesh.get_instance_id()): continue
 		done[mi.mesh.get_instance_id()] = true
-		var r := _ratio(_group(src), nm.ends_with("LOD1"), _tris(mi.mesh))
-		if r > 0.0 and _reduce(mi.mesh, r, "Mane" in nm and not "Tail" in nm, src + " " + nm): changed = true
+		var r := HAT_RATIO if hat else _ratio(_group(src), nm.ends_with("LOD1"), _tris(mi.mesh))
+		if r > 0.0 and _reduce(mi.mesh, r, hat or ("Mane" in nm and not "Tail" in nm), src + " " + nm): changed = true
 	root.free()
 	if changed: _save(ps, game_path)
 

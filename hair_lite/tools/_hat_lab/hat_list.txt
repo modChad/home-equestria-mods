@@ -1,0 +1,1 @@
+res://world/characters/mane6/applejack_devkit_hair.glb
