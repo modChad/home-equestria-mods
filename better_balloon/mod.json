@@ -1,0 +1,9 @@
+{
+	"id": "better_balloon",
+	"name": "Better Balloon",
+	"version": "1.0.0",
+	"author": "modChad",
+	"description": "The hot-air balloon made for ponies: fly with WASD and Q/E at the Helm while looking around freely, drift on the breeze, lean over the side with Ctrl. A lower basket ponies can see out of, with its ropes rebuilt; passengers look over the rim and talk together as a group; ponies you carry in stay aboard, passengers wait while you fetch another, and followers who stop short of the ramp are helped in. Replaces Balloon Boarding.",
+	"game_version": "0.3.1-maredev",
+	"entry": "res://mods/better_balloon/main.gd"
+}

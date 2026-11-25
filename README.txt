@@ -10,7 +10,7 @@ build_packs.sh      builds packs into release_packs/
 
 Mods:
   anonfilly_patch 1.0.0     Anonfilly's mane and tail with far fewer triangles (needs Anonfilly 1.0.0)
-  balloon_boarding 1.0.0    ponies stay aboard the hot-air balloon
+  better_balloon 1.0.0      the hot-air balloon made for ponies: WASD flying, a lower basket, passengers who look out and chat (replaces balloon_boarding)
   briefcase_rescue 1.0.0    repairs briefcases and saves refused because of items from a removed mod
   fishing 0.7.1             readable pier fishing, rare fish and junk, the Angler's Log, a live-well pail
   flowing_manes 1.0.1       Celestia's and Luna's manes and tails flow, with mood colours
