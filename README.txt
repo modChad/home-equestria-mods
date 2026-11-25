@@ -3,6 +3,7 @@ Home: Equestria mods by modChad (made for game version 0.3.1-maredev)
 .github/README.md   the mod list with download links (shown on GitHub)
 release_packs/      ready-to-use .pck files: put them in the game's mods folder and switch each on in Settings -> Mods
 <mod folder>/       each mod's source (res://mods/<id>/), with its own README
+retired/            mods merged into another mod or no longer released (source and last pack, not built)
 MOD_IDEAS.md        what's done, what's next, and ideas
 BUGS.md             game bugs to report, and local game changes
 MODDING_NOTES.md    rules and how-tos for every mod
