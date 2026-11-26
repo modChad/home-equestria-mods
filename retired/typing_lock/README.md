@@ -1,5 +1,7 @@
 # Typing Lock
 
+> **Retired (2026-11-26):** game 0.3.1 has this built in (`world/ui/typing_guard.gd`). Remove the pack; running both makes them fight over the keys.
+
 - **Version:** 1.0.0
 - **By:** modChad
 - **Made for:** Home: Equestria 0.3.1-maredev

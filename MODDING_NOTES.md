@@ -17,7 +17,7 @@
 - **AI consent:** to know what Anon just said to a pony, connect to `game.director.transcript(text)` and match it against the end of her last `"user"` entry in `director.characters[id].history` (the game prefixes notes to it).
 - **Input order:** `_input` reaches later nodes first. The game scene is added after mods load, so a mod that must hear a key before the game keeps its input node last in the root (move it back each frame if needed).
 - **Movement keys are polled:** consuming a WASD event doesn't stop Anon walking; lock `player_body.controls_locked` (and unlock afterwards) while a mod's own UI uses those keys.
-- **Typing:** Typing Lock strips every non-`ui_*` key event from the InputMap while a LineEdit/TextEdit has focus and restores it afterwards; the game's seat/bed Q (`stand_up`) is polled without a `controls_locked` check.
+- **Typing:** game 0.3.1 empties the InputMap of gameplay keys while a text field has focus (`world/ui/typing_guard.gd`; Typing Lock retired). Raw key checks (`Input.is_key_pressed`, `physical_keycode`) still fire: guard them with `preload("res://world/ui/typing_guard.gd").active()`. For someone else's mod, patch it (mod.json `patches` + `extends`, like `pegasus_ride_v2_patch` and Dance Mod fixes). Headless checks with `--path` load the player's installed packs too (`user://mods`).
 - **Headless checks:** in a `--script` SceneTree, autoloads (e.g. `Mods`) aren't there yet in `_init`; `await process_frame` first.
 - **Testing new animations:** the dev has given the user permission to bypass his rules (e.g. joint limits) when testing new animations.
 - **Docs:** after a build, update the mod's line in MOD_IDEAS.md and its notes in the project (`mods/notes/<id>.md`); game bugs go in BUGS.md, general lessons here.

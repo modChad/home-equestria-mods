@@ -87,6 +87,8 @@ func _load_options() -> void:
 func _input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if key == null or not key.pressed or key.echo or not key.shift_pressed or key.physical_keycode != KEY_K: return
+	# 1.2.12: a capital K typed in the chat (or any text box) is a letter, not the toggle.
+	if preload("res://world/ui/typing_guard.gd").active(): return
 	rear_enabled = not rear_enabled
 	var cfg := ConfigFile.new()
 	cfg.set_value("kissing", "rear", rear_enabled)

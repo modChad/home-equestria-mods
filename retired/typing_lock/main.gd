@@ -52,6 +52,7 @@ func _physics_process(_delta: float) -> void:
 	_update()
 
 
+
 func _input(event: InputEvent) -> void:
 	# Focus taken inside this same event (Enter opening the chat): catch it before the next key.
 	if event is InputEventKey: _update()

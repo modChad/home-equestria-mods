@@ -1,6 +1,6 @@
 # Kissing
 
-- **Version:** 1.2.11
+- **Version:** 1.2.12
 - **By:** modChad
 - **Made for:** Home: Equestria 0.3.1-maredev
 - **Works on:** desktop (hold K) and VR (lean in)
@@ -69,6 +69,10 @@ Works with Horn Glow 1.1.1.
 
 In VR, leaning in to kiss works again after the first kiss: once the kiss is over and you pull your head back, you can lean in for another. Before, it only worked again after pressing the kiss button or reloading.
 
+## Fixes (1.2.12)
+
+- Typing a capital K in the chat (or any text box) no longer toggles rearing kisses.
+
 ## Fixes (1.2.11)
 
 - **In bed (or any seat):** kissing no longer gets you both out of bed. While you're in a bed or seat, the mod stays out of the way and the game's own kiss runs.
@@ -77,7 +81,7 @@ In VR, leaning in to kiss works again after the first kiss: once the kiss is ove
 
 ## Install
 
-Put `kissing-v1.2.11.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
+Put `kissing-v1.2.12.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
 
 ## Build from source
 
