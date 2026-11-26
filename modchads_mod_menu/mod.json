@@ -1,0 +1,9 @@
+{
+	"id": "modchads_mod_menu",
+	"name": "modChad's Mod Menu",
+	"version": "1.0.0",
+	"author": "modChad",
+	"description": "A better Settings → Mods: search, sort and filters, compact rows that open for details, restart and conflict notices, All on / All off, links to each mod's own settings, and a Browse online tab for mods.pones.top with a content filter that is always on.",
+	"game_version": "0.3.1-maredev",
+	"extends": ["res://mods/modchads_mod_menu/ext/settings_page.gd"]
+}
