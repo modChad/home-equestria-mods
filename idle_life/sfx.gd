@@ -11,7 +11,7 @@ const DIR := "res://mods/idle_life/sounds/"
 const HARD := ["stone", "wood", "ice", "cobble", "brick", "tile", "metal", "marble", "cloud"]
 ## How loud (dB) each kind plays, and how far it carries (metres to half volume). Set from the
 ## first render with sound (2026-11-24): the royal stamp clipped at 4 m (its long reach adds about 5 dB close up) and the taps were faint.
-const LOUD := {"stamp": -2.0, "stamp_royal": -7.5, "tap": 0.0}
+const LOUD := {"stamp": -2.0, "stamp_royal": -7.5, "tap": -6.0}   # taps -6 dB (2026-11-26: too loud in game)
 const UNIT := {"stamp": 4.0, "stamp_royal": 7.0, "tap": 2.5}
 ## The royal stamp's shake: full within SHAKE_NEAR metres of her, none past SHAKE_FAR.
 const SHAKE_NEAR := 4.0

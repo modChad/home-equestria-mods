@@ -116,6 +116,7 @@ func _pick(step: float) -> void:
 
 ## Standing about with time on her hooves, and nothing of the game's own playing on her.
 func _free(pony: Node3D, resting := false) -> bool:
+	if _intimate(pony): return false
 	var nav: Node = pony.get_node_or_null("Navigator")
 	if FIDGETS.level(pony, nav, false) != (FIDGETS.REST if resting else FIDGETS.STAND): return false
 	var affection: Node = pony.get_node_or_null("Affection")
@@ -1873,7 +1874,7 @@ func _excitement() -> void:
 			_taps_due.erase(pony)
 			continue
 		if not was: _taps_due[pony] = true
-		if _kissed(pony): _taps_due[pony] = false
+		if _kissed(pony) or _intimate(pony): _taps_due[pony] = false
 		if not bool(_taps_due.get(pony, false)): continue
 		if Time.get_ticks_msec() - int(_taps_at.get(pony, -1000000000)) < int(TAPS_GAP * 1000.0):
 			_taps_due[pony] = false
@@ -1913,6 +1914,7 @@ func _moods(pony: Node3D) -> void:
 		_faces[pony] = face
 		if IDLES.MOODS.has(face): _mood_due[pony] = [IDLES.MOODS[face], now]
 		else: _mood_due.erase(pony)
+	if _intimate(pony): _mood_due.erase(pony)
 	if not _mood_due.has(pony) or bool(_taps_due.get(pony, false)): return
 	var due: Array = _mood_due[pony]
 	if now - int(due[1]) > int(MOOD_START * 1000.0) or now - int(_mood_at.get(pony, -1000000000)) < int(MOOD_GAP * 1000.0):
@@ -1931,6 +1933,13 @@ func _moods(pony: Node3D) -> void:
 		_mood_at[pony] = now
 
 
+## In another mod's intimate scene or its aftercare (unfplap marks the mare "sex_active" and
+## "sex_aftercare"): no idles or reactions at all then (2026-11-26: the tippy-taps played
+## during a scene, as its excitement counts as excited).
+func _intimate(pony: Node3D) -> bool:
+	return bool(pony.get_meta("sex_active", false)) or pony.has_meta("sex_aftercare")
+
+
 func _kissed(pony: Node3D) -> bool:
 	var affection: Node = pony.get_node_or_null("Affection")
 	return affection != null and str(affection.get("kind")) == "kiss"
@@ -1944,7 +1953,7 @@ func _taps_free(pony: Node3D, playing := false) -> bool:
 	if int(pony.get("sim_tier")) > 1: return false
 	if bool(pony.get("sleeping")) or bool(pony.get("motion_paused")) or bool(pony.get("_held")): return false
 	if pony.has_meta("seated") or bool(pony.get_meta("cuddle_active", false)) or bool(pony.get_meta("affection_active", false)): return false
-	if _kissed(pony): return false
+	if _kissed(pony) or _intimate(pony): return false
 	if pony.has_method("grounded") and not bool(pony.grounded()): return false
 	if float(pony.get("actual_speed")) > 0.05: return false
 	var flight: Variant = pony.get("flight")

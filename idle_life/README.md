@@ -1,6 +1,6 @@
 # Idle Life
 
-- **Version:** 1.5.0
+- **Version:** 1.5.1
 - **By:** modChad
 - **Made for:** Home: Equestria 0.3.1-maredev
 - **Works on:** desktop and VR (nothing to press)
@@ -57,7 +57,7 @@ Each reaction plays at most once every 30 seconds per pony, and only when she's 
 
 ## Install
 
-Put `idle-life-v1.5.0.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
+Put `idle-life-v1.5.1.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
 
 ## Things to know
 
@@ -79,6 +79,7 @@ Put `idle-life-v1.5.0.pck` in the game's `mods` folder and switch it on in **Set
 
 ## Changes
 
+- **1.5.1 (2026-11-26):** no idles or reactions (including the tippy-taps) during another mod's intimate scene or its aftercare (unfplap). The tippy-tap hoof sounds are quieter (-6 dB).
 - **1.5.0 (2026-11-24):** new reactions: excited tippy-taps and sad, shy, angry and surprised body reactions, with hoof sounds and a view shake for Celestia's and Luna's stamp. New idles: forelock sweep, hat reseat, ear scratch (sitting earth ponies), grazing, and Celestia's and Luna's magic grazing. The pawing hoof now lifts properly (about 15 cm, was about 6). The scroll, writing, tea, shoe, sun, moon and dozing are no longer remembered (fewer words in every pony's memory).
 
 - **1.4.2:** With the Horn Glow mod, the sparks leaving her horn (magic sparkle, sun and moon) are quiet puffs of sparkles, with no round disc or cast sound. Her horn itself glows the Horn Glow way.
