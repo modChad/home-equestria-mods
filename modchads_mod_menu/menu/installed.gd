@@ -8,7 +8,9 @@ extends RefCounted
 const STYLE := preload("res://world/ui/menu_style.gd")
 const LOADER := preload("res://world/modding/mod_loader.gd")
 const BROWSE := preload("res://mods/modchads_mod_menu/menu/browse.gd")
-const FILTERS := [["all", "All"], ["on", "On"], ["off", "Off"], ["restart", "Needs restart"], ["settings", "Has settings"], ["problems", "Problems"],
+const PROBLEMS := preload("res://mods/modchads_mod_menu/menu/problems.gd")
+const RELOAD := preload("res://mods/modchads_mod_menu/menu/reload.gd")
+const FILTERS := [["all", "All"], ["on", "On"], ["off", "Off"], ["restart", "Needs restart"], ["settings", "Has settings"],
 	["included", "Included"], ["yours", "Added by you"]]
 const SORTS := ["A–Z", "On first", "Author"]
 const MOST_FILES := 200
@@ -19,8 +21,14 @@ static func build(page, list: VBoxContainer) -> void:
 	for child in list.get_children():
 		list.remove_child(child); child.queue_free()
 	var fs: int = page.font_size
+	page.mm_rebuild = func() -> void:
+		if is_instance_valid(list): build(page, list); page.refresh(); page._redraw()
 	var tabs := HBoxContainer.new(); tabs.add_theme_constant_override("separation", 8); list.add_child(tabs)
-	for view: Array in [["installed", "Installed"], ["browse", "Browse online"]]:
+	var views: Array = [["installed", "Installed"], ["browse", "Browse online"]]
+	# The Problems tab only while there is one (or while it is open, so it can say "none left").
+	var problems := PROBLEMS.collect().size()
+	if problems > 0 or page.mm_view == "problems": views.append(["problems", "Problems %d" % problems if problems > 0 else "Problems"])
+	for view: Array in views:
 		var b: Button = page._button(tabs, str(view[1]), func() -> void:
 			if page.mm_view != view[0]:
 				page.mm_view = str(view[0]); build(page, list)
@@ -28,12 +36,19 @@ static func build(page, list: VBoxContainer) -> void:
 		b.theme_type_variation = "Tab"; b.toggle_mode = true
 		b.set_pressed_no_signal(page.mm_view == view[0])
 		b.add_theme_font_size_override("font_size", fs - 2)
+		b.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	RELOAD.build(page, tabs)
 	page._note(list, "Mods can run code on your computer. Only install mods from people you trust. Most mods switch on and off at once; the rest apply the next time the game starts.")
-	# Mod Reloader finds this button by its text and puts its reload row right under it.
-	var open: Button = page._button(list, "Open mods folder", page._open_mods_folder)
+	# Not "Open mods folder": Mod Reloader would add its own reload row under that exact text, and
+	# the tab bar's Reload control replaces it.
+	var open: Button = page._button(list, "Open the mods folder", page._open_mods_folder)
 	open.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if page.mm_view == "browse":
 		page.mm_browse = BROWSE.new(page, list)
+		return
+	if page.mm_view == "problems":
+		page.mm_browse = null
+		PROBLEMS.build(page, list)
 		return
 	page.mm_browse = null
 	var bar := HBoxContainer.new(); bar.add_theme_constant_override("separation", 8); list.add_child(bar)
@@ -114,19 +129,17 @@ static func fill(page) -> void:
 	if not restart.is_empty():
 		var names := PackedStringArray(restart.map(func(f: Dictionary) -> String: return "%s (%s)" % [f.name, "on" if f.on else "off"]))
 		_card(page, body, "%d %s after a restart: %s." % [restart.size(), "change applies" if restart.size() == 1 else "changes apply", ", ".join(names)], STYLE.SKY)
-	var owners := {}   # game file -> names of switched-on packs that replace it
-	for f: Dictionary in all:
-		if not f.on: continue
-		for path: String in (f.row.overrides as PackedStringArray):
-			if not owners.has(path): owners[path] = []
-			(owners[path] as Array).append(f.name)
-	var clashes := PackedStringArray()
-	for path: String in owners:
-		var who: Array = owners[path]
-		if who.size() > 1: clashes.append("%s: %s" % [path.get_file(), ", ".join(PackedStringArray(who))])
-	if not clashes.is_empty():
-		var shown := "\n".join(clashes.slice(0, 4)) + ("\n…and %d more files" % (clashes.size() - 4) if clashes.size() > 4 else "")
-		_card(page, body, "Conflict: these game files are replaced by more than one mod, and only the one that loads last takes effect.\n" + shown, STYLE.CORAL)
+	var problems := PROBLEMS.collect()
+	if not problems.is_empty():
+		var card := PanelContainer.new()
+		card.add_theme_stylebox_override("panel", STYLE.rounded(STYLE.box(Color(STYLE.CORAL, 0.08), Color(STYLE.CORAL, 0.3), 1, 14, 14, 10)))
+		body.add_child(card)
+		var line := HBoxContainer.new(); line.add_theme_constant_override("separation", 10); card.add_child(line)
+		var label := STYLE.label("%d %s with your mods." % [problems.size(), "problem" if problems.size() == 1 else "problems"], "", int(page.font_size) - 3)
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL; label.size_flags_vertical = Control.SIZE_SHRINK_CENTER; line.add_child(label)
+		var go: Button = page._button(line, "See what's wrong", func() -> void:
+			page.mm_view = "problems"; build(page, page.mm_list); page.refresh(); page._redraw())
+		go.theme_type_variation = "Danger"; go.add_theme_font_size_override("font_size", int(page.font_size) - 4)
 	var shown_rows := all.filter(func(f: Dictionary) -> bool: return _passes(page, f))
 	shown_rows.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return _before(int(page.mm_sort), a, b))
 	_heading(page, body, "Installed mods", "%d" % all.size() + (", %d shown" % shown_rows.size() if shown_rows.size() != all.size() else ""), shown_rows)
@@ -149,7 +162,6 @@ static func _passes(page, f: Dictionary) -> bool:
 		"off": return not f.on
 		"restart": return f.restart
 		"settings": return f.settings != null
-		"problems": return f.problem or f.old
 		"included": return bool(f.row.bundled)
 		"yours": return not bool(f.row.bundled)
 	return true
@@ -175,7 +187,6 @@ static func _fill_chips(page, all: Array) -> void:
 				"off": return not f.on
 				"restart": return f.restart
 				"settings": return f.settings != null
-				"problems": return f.problem or f.old
 				"included": return bool(f.row.bundled)
 				"yours": return not bool(f.row.bundled)
 			return true).size()

@@ -3,7 +3,10 @@
 	"name": "modChad's Mod Menu",
 	"version": "1.0.0",
 	"author": "modChad",
-	"description": "A better Settings → Mods: search, sort and filters, compact rows that open for details, restart and conflict notices, All on / All off, links to each mod's own settings, and a Browse online tab for mods.pones.top with a content filter that is always on.",
+	"description": "A better Settings → Mods: search, sort and filters, compact rows that open for details, a Problems tab that explains what's wrong (with safe updates), a Reload game button that restarts to the main menu or straight into a save (Mod Reloader is now part of it), All on / All off, links to each mod's own settings, and a Browse online tab for mods.pones.top with an NSFW switch and a hard block that can't be turned off.",
 	"game_version": "0.3.1-maredev",
-	"extends": ["res://mods/modchads_mod_menu/ext/settings_page.gd"]
+	"extends": [
+		"res://mods/modchads_mod_menu/ext/settings_page.gd"
+	],
+	"entry": "res://mods/modchads_mod_menu/main.gd"
 }

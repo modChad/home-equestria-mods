@@ -8,7 +8,10 @@ extends RefCounted
 ## dropped too. Fetched when
 ## the tab opens (at most every CACHE_SECONDS) or on Refresh, never polled. Install downloads a
 ## .pck over HTTPS into the mods folder after a second press, checks it is a Godot pack, and the
-## game loads it at the next start. Anything else (a .zip, no download) opens the listing's page.
+## game loads it at the next start. One-click installs and updates need a download from a trusted
+## host (GitHub) and a security check without findings (install_check): anything else, a .zip or
+## no download opens the listing's page instead. The index and downloads are shared with the
+## Problems tab (ensure_index, download).
 
 const STYLE := preload("res://world/ui/menu_style.gd")
 const LOADER := preload("res://world/modding/mod_loader.gd")
@@ -19,6 +22,10 @@ const CACHE_SECONDS := 600.0
 const PAGE_SIZE := 30
 const MOST_BYTES := 400 * 1024 * 1024
 const ARM_SECONDS := 5.0
+## Hosts a one-click install or update may download from (and their subdomains).
+const TRUSTED_HOSTS := ["github.com", "githubusercontent.com"]
+## Security check states that block a one-click install or update.
+const BAD_REVIEWS := ["red_flag", "findings", "mixed"]
 const MODES := [["newest", "Newest"], ["mine", "Updates for my mods"], ["new", "Not installed"], ["checked", "Security check passed"], ["rated", "Highest rated"]]
 const REVIEW := {"no_findings": ["Security check: no findings", "mint"], "findings": ["Security check: findings", "peach"],
 	"incomplete": ["Security check: incomplete", "butter"], "not_reviewed": ["Not checked yet", "faint"],
@@ -38,6 +45,10 @@ const SETTINGS_ID := "modchads_mod_menu"
 static var last_error := ""
 ## listing id -> "Downloading…", "Installed: restart to load", "Failed: …"
 static var installing: Dictionary = {}
+static var fetching := false
+static var _waiters: Array[Callable] = []
+## listing id -> seconds of the first Install / Update press (shared by every view).
+static var armed: Dictionary = {}
 
 var page
 var list: VBoxContainer
@@ -47,7 +58,6 @@ var query := ""
 var mode := "newest"
 var shown := PAGE_SIZE
 var loading := false
-var _armed: Dictionary = {}   # listing id -> ticks msec of the first Install press
 
 
 func _init(settings_page, tab_list: VBoxContainer) -> void:
@@ -59,14 +69,17 @@ func _init(settings_page, tab_list: VBoxContainer) -> void:
 	field.max_length = 80; field.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	field.add_theme_font_size_override("font_size", fs - 1); field.focus_entered.connect(page._redraw); bar.add_child(field)
 	field.text_changed.connect(func(text: String) -> void: query = text; shown = PAGE_SIZE; fill())
-	var refresh: Button = page._button(bar, "Refresh", func() -> void: fetch())
+	var refresh: Button = page._button(bar, "Refresh", func() -> void:
+		loading = true; fill()
+		ensure_index(page, func() -> void:
+			loading = false
+			if _alive(): fill(), true))
 	refresh.add_theme_font_size_override("font_size", fs - 3)
 	chips = HFlowContainer.new(); chips.add_theme_constant_override("h_separation", 6); chips.add_theme_constant_override("v_separation", 6)
 	list.add_child(chips)
 	body = VBoxContainer.new(); body.add_theme_constant_override("separation", 6)
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL; list.add_child(body)
-	if cache_at < 0.0 or _now() - cache_at > CACHE_SECONDS: fetch()
-	else: fill()
+	fetch()
 
 
 static func _settings_path() -> String:
@@ -97,29 +110,44 @@ func _alive() -> bool:
 
 
 func fetch() -> void:
-	if loading or not _alive(): return
-	loading = true; last_error = ""
-	fill()
+	loading = true
+	if _alive(): fill()
+	ensure_index(page, func() -> void:
+		loading = false
+		if _alive(): fill())
+
+
+## Calls `done` once the index is in the cache (fetched now when it is missing, stale or `force`).
+## One request at a time: callers that ask while it runs are called when it finishes.
+static func ensure_index(host: Node, done: Callable, force := false) -> void:
+	if not force and cache_at >= 0.0 and _now() - cache_at <= CACHE_SECONDS:
+		done.call(); return
+	_waiters.append(done)
+	if fetching: return
+	fetching = true; last_error = ""
 	var http := HTTPRequest.new(); http.timeout = 20.0; http.body_size_limit = 16 * 1024 * 1024
-	page.add_child(http)
+	host.add_child(http)
 	http.request_completed.connect(func(result: int, code: int, _headers: PackedStringArray, bytes: PackedByteArray) -> void:
 		http.queue_free(); _on_index(result, code, bytes))
 	var err := http.request(INDEX + "/api/mods", ["Accept: application/json", "User-Agent: " + AGENT])
 	if err != OK:
-		http.queue_free(); _failed("Could not start the request (error %d)." % err)
+		http.queue_free(); _finish("Could not start the request (error %d)." % err)
 
 
-func _failed(why: String) -> void:
-	loading = false; last_error = why
-	if _alive(): fill()
+static func _finish(why: String) -> void:
+	fetching = false; last_error = why
+	var waiting := _waiters.duplicate(); _waiters.clear()
+	for w: Callable in waiting:
+		if w.is_valid(): w.call()
 
 
-func _on_index(result: int, code: int, bytes: PackedByteArray) -> void:
-	if result != HTTPRequest.RESULT_SUCCESS: _failed("Could not reach mods.pones.top (%s)." % _result_text(result)); return
-	if code == 429: _failed("mods.pones.top asked to wait a little. Try Refresh again later."); return
-	if code != 200: _failed("mods.pones.top answered %d." % code); return
+
+static func _on_index(result: int, code: int, bytes: PackedByteArray) -> void:
+	if result != HTTPRequest.RESULT_SUCCESS: _finish("Could not reach mods.pones.top (%s)." % _result_text(result)); return
+	if code == 429: _finish("mods.pones.top asked to wait a little. Try Refresh again later."); return
+	if code != 200: _finish("mods.pones.top answered %d." % code); return
 	var data: Variant = JSON.parse_string(bytes.get_string_from_utf8())
-	if not data is Array: _failed("mods.pones.top sent something this menu does not understand."); return
+	if not data is Array: _finish("mods.pones.top sent something this menu does not understand."); return
 	var kept: Array = []
 	hidden_filter = 0; hidden_flag = 0
 	for item: Variant in data:
@@ -127,8 +155,8 @@ func _on_index(result: int, code: int, bytes: PackedByteArray) -> void:
 		var review: Variant = (item as Dictionary).get("security_review", {})
 		if review is Dictionary and str((review as Dictionary).get("state", "")) == "red_flag": hidden_flag += 1; continue
 		kept.append(item)
-	cache = kept; cache_at = _now(); loading = false
-	if _alive(): fill()
+	cache = kept; cache_at = _now()
+	_finish("")
 
 
 static func _result_text(result: int) -> String:
@@ -160,6 +188,20 @@ static func _key(text: String) -> String:
 	for c in text.to_lower():
 		if (c >= "a" and c <= "z") or (c >= "0" and c <= "9"): out += c
 	return out
+
+
+## The cached listing for a mod name with a newer version than `mine`, or {}.
+static func newer_listing(name: String, mine: String) -> Dictionary:
+	var k := _key(name)
+	if k.is_empty(): return {}
+	for item: Dictionary in cache:
+		var names: Array = [str(item.get("name", ""))]
+		var aliases: Variant = item.get("search_aliases", [])
+		if aliases is Array: names.append_array(aliases)
+		for n: Variant in names:
+			if _key(str(n)) == k and LOADER.version_older(mine, str(item.get("version", ""))) and not FILTER.hard_blocked(item):
+				return item
+	return {}
 
 
 ## "new", "newer" (you have an older one) or "have"; with the version you have.
@@ -251,6 +293,23 @@ func _heading(text: String, detail: String) -> void:
 
 
 ## The first download that is a .pck over HTTPS, or {}.
+## "" when a one-click install or update is allowed, else why not (shown under the button).
+static func install_check(item: Dictionary) -> String:
+	if FILTER.hard_blocked(item): return "Not available."
+	if FILTER.is_nsfw(item) and not show_nsfw: return "Adult listings are hidden."
+	var pck := _pck(item)
+	if pck.is_empty(): return "No .pck download: get it from its page."
+	var host := str(pck.url).trim_prefix("https://").get_slice("/", 0).get_slice(":", 0).to_lower()
+	var trusted := false
+	for h: String in TRUSTED_HOSTS:
+		if host == h or host.ends_with("." + h): trusted = true
+	if not trusted: return "Download is on %s, not GitHub: get it from its page." % host
+	var review: Variant = item.get("security_review", {})
+	var state := str((review as Dictionary).get("state", "not_reviewed")) if review is Dictionary else "not_reviewed"
+	if state in BAD_REVIEWS: return "The site's security check found issues: read its page first."
+	return ""
+
+
 static func _pck(item: Dictionary) -> Dictionary:
 	var downloads: Variant = item.get("downloads", [])
 	if downloads is Array:
@@ -297,38 +356,42 @@ func _listing(item: Dictionary, status: Array) -> void:
 	var side := VBoxContainer.new(); side.add_theme_constant_override("separation", 6); side.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	line.add_child(side)
 	var progress := str(installing.get(id, ""))
-	var pck := _pck(item)
+	var why := install_check(item)
 	if not progress.is_empty():
 		var note := STYLE.label(progress, "Muted", fs - 4); note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		note.custom_minimum_size.x = fs * 7; side.add_child(note)
-	elif not pck.is_empty() and status[0] != "have":
-		var armed := _now() - float(_armed.get(id, -100.0)) < ARM_SECONDS
-		var caption := ("Press again" if armed else ("Update" if status[0] == "newer" else "Install"))
-		var install: Button = page._button(side, caption, func() -> void: _press_install(item, pck))
-		if status[0] == "newer" or armed: install.theme_type_variation = "Primary"
+	elif status[0] != "have" and why.is_empty():
+		var is_armed := _now() - float(armed.get(id, -100.0)) < ARM_SECONDS
+		var caption := ("Press again" if is_armed else ("Update" if status[0] == "newer" else "Install"))
+		var install: Button = page._button(side, caption, func() -> void: press_install(page, item, func() -> void:
+			if _alive(): fill()))
+		if status[0] == "newer" or is_armed: install.theme_type_variation = "Primary"
 		install.add_theme_font_size_override("font_size", fs - 3)
+	elif status[0] != "have":
+		var note := STYLE.label(why, "Faint", maxi(11, fs - 6)); note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		note.custom_minimum_size.x = fs * 8; side.add_child(note)
 	var open: Button = page._button(side, "Open page", func() -> void: _open_page(id))
 	open.theme_type_variation = "Ghost"; open.add_theme_font_size_override("font_size", fs - 4)
 
 
-func _press_install(item: Dictionary, pck: Dictionary) -> void:
-	if FILTER.hard_blocked(item): return
+## First press arms it (5 s), the second downloads. `changed` is called whenever its state moves.
+static func press_install(host: Node, item: Dictionary, changed: Callable) -> void:
+	if not install_check(item).is_empty(): return
 	var id := str(item.get("id", ""))
-	if _now() - float(_armed.get(id, -100.0)) >= ARM_SECONDS:
-		_armed[id] = _now()
-		Settings.message = "Press again to download %s from %s into your mods folder." % [str(item.get("name", "")), str(pck.url).get_slice("/", 2)]
-		fill(); page.refresh()
-		var tree: SceneTree = page.get_tree()
+	var pck := _pck(item)
+	if _now() - float(armed.get(id, -100.0)) >= ARM_SECONDS:
+		armed[id] = _now()
+		Settings.message = "Press again to download %s %s from %s into your mods folder." % [str(item.get("name", "")), str(item.get("version", "")), str(pck.url).trim_prefix("https://").get_slice("/", 0)]
+		changed.call()
+		var tree := host.get_tree()
 		if tree != null:
 			await tree.create_timer(ARM_SECONDS + 0.1).timeout
-			if _alive(): fill()
+			changed.call()
 		return
-	_armed.erase(id)
-	_download(item, pck)
+	armed.erase(id)
+	download(host, item, changed)
 
 
-## The folder the game reads mods from: beside the game on desktop, else user://mods (the same
-## choice as settings_page.gd _open_mods_folder()).
 static func _mods_dir() -> String:
 	if OS.has_feature("template") and not OS.has_feature("android"):
 		var beside := OS.get_executable_path().get_base_dir().path_join("mods")
@@ -338,26 +401,27 @@ static func _mods_dir() -> String:
 	return folder
 
 
-func _download(item: Dictionary, pck: Dictionary) -> void:
+static func download(host: Node, item: Dictionary, changed: Callable) -> void:
+	if not install_check(item).is_empty() or FILTER.hard_blocked(item): return
+	var pck := _pck(item)
 	var id := str(item.get("id", ""))
 	var name := str(pck.filename).get_file().validate_filename()
-	if not name.to_lower().ends_with(".pck") or FILTER.hard_blocked(item): return
-	if FILTER.is_nsfw(item) and not show_nsfw: return
+	if not name.to_lower().ends_with(".pck"): return
 	var folder := _mods_dir()
 	var part := folder.path_join(name + ".part")
 	var final := folder.path_join(name)
 	var http := HTTPRequest.new(); http.download_file = part; http.timeout = 180.0
 	http.body_size_limit = MOST_BYTES; http.max_redirects = 5
-	page.add_child(http)
-	installing[id] = "Downloading…"; fill()
+	host.add_child(http)
+	installing[id] = "Downloading…"; changed.call()
 	http.request_completed.connect(func(result: int, code: int, _h: PackedStringArray, _b: PackedByteArray) -> void:
-		http.queue_free(); _downloaded(item, part, final, result, code))
+		http.queue_free(); _downloaded(item, part, final, result, code); changed.call())
 	var err := http.request(str(pck.url), ["User-Agent: " + AGENT])
 	if err != OK:
-		http.queue_free(); installing[id] = "Failed: could not start the download."; fill()
+		http.queue_free(); installing[id] = "Failed: could not start the download."; changed.call()
 
 
-func _downloaded(item: Dictionary, part: String, final: String, result: int, code: int) -> void:
+static func _downloaded(item: Dictionary, part: String, final: String, result: int, code: int) -> void:
 	var id := str(item.get("id", ""))
 	var why := ""
 	if result != HTTPRequest.RESULT_SUCCESS: why = _result_text(result)
@@ -379,7 +443,6 @@ func _downloaded(item: Dictionary, part: String, final: String, result: int, cod
 		else:
 			installing[id] = "Installed: restart to load"
 			Settings.message = "Installed %s (%s). Restart the game to load it." % [str(item.get("name", "")), final.get_file()]
-	if _alive(): fill(); page.refresh()
 
 
 func _open_page(id: String) -> void:
