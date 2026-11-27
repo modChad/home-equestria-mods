@@ -148,7 +148,11 @@ func after_affection(delta: float) -> void:
 	elif mare.has_method("stop"): mare.stop()
 
 
+## Idle cost (devanon, merged in 1.2.13): feelings nodes run only while a pony is excited. idle.gd.
+var _idle := preload("res://mods/kissing/idle.gd").new(self)
+
 func _physics_process(delta: float) -> void:
+	_idle.tick(delta) # First: it runs every tick, also when the early returns below skip the rest (as in devanon's patch).
 	if not is_instance_valid(_kisser) or not _kisser.is_inside_tree(): return
 	var camera: Camera3D = _kisser.get("camera")
 	if not is_instance_valid(camera) or not camera.is_inside_tree(): return

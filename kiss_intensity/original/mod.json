@@ -1,0 +1,10 @@
+{
+	"id": "kiss_intensity",
+	"name": "Kiss intensity",
+	"version": "0.7.1",
+	"author": "devanon",
+	"description": "For Kissing 1.2.11. A returned kiss builds. The kiss itself is a slow lip cycle: her lips open a little, close over your lower lip, hold and let go, then your upper lip, her head tilting a little each time, with half-lidded fluttering eyes, an ear flick, a small swallow. Her blush deepens and spreads, her tongue reaches into your mouth later in the kiss, and on desktop your view tips down so you see it. Rarely she parts from you for a breath, seven centimetres, with a warm puff and near the top a thin strand between your lips. A pegasus's wings lift and then snap open and a partner rears up later in the kiss. Before she answers she holds still for a second; if she turns you down, she turns her face aside. Her mane fades where it would cover your eyes. Adults only; the forehead kiss for the young is unchanged. Each part has its own switch in user://mods/data/kiss_intensity/options.cfg.",
+	"game_version": "0.3.0-maredev",
+	"depends": {"kissing": "=1.2.11"},
+	"extends": ["res://mods/kiss_intensity/ext/affection.gd", "res://mods/kiss_intensity/ext/main.gd"]
+}

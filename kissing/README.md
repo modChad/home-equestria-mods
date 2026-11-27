@@ -1,6 +1,6 @@
 # Kissing
 
-- **Version:** 1.2.12
+- **Version:** 1.2.13
 - **By:** modChad
 - **Made for:** Home: Equestria 0.3.1-maredev
 - **Works on:** desktop (hold K) and VR (lean in)
@@ -69,6 +69,10 @@ Works with Horn Glow 1.1.1.
 
 In VR, leaning in to kiss works again after the first kiss: once the kiss is over and you pull your head back, you can lean in for another. Before, it only worked again after pressing the kiss button or reloading.
 
+## Changes (1.2.13)
+
+- **Less work when nopony is excited** (devanon's "Kissing: idle and typing fixes", merged with thanks): each pony's feelings now only run while she is excited or calming down, instead of every frame for every pony, and her settled fidgets and wing shivers are cleared away so far ponies can idle. Kisses look the same. If you have devanon's `kissing_patch` switched on, the game holds it back with 1.2.13: it isn't needed any more.
+
 ## Fixes (1.2.12)
 
 - Typing a capital K in the chat (or any text box) no longer toggles rearing kisses.
@@ -81,7 +85,7 @@ In VR, leaning in to kiss works again after the first kiss: once the kiss is ove
 
 ## Install
 
-Put `kissing-v1.2.12.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
+Put `kissing-v1.2.13.pck` in the game's `mods` folder and switch it on in **Settings → Mods**.
 
 ## Build from source
 
