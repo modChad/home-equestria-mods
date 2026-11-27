@@ -1,5 +1,5 @@
 extends Node
-## modChad's Mod Menu: the part that runs at startup. Mod Reloader (modChad) is merged in here:
+## modChads modManager: the part that runs at startup. Mod Reloader (modChad) is merged in here:
 ## when Reload game is set to load a save, menu/reload.gd autosaves, writes a one-shot resume note
 ## and restarts the game; on this launch the title runs as normal (XR, data, setup) and, once it
 ## is ready, the chosen save is staged with game_saves.stage() and entered like the title's own
@@ -10,7 +10,7 @@ extends Node
 const SAVES := preload("res://world/game_saves.gd")
 const CATALOGUE := preload("res://world/saves/save_catalogue.gd")
 const TITLE := "res://world/ui/title_screen.gd"
-const ID := "modchads_mod_menu"
+const ID := "modchads_modmanager"
 const NOTE := "resume.cfg"
 const NOTE_MAX_AGE := 600.0       # seconds: an older note (a failed relaunch) is ignored
 const TITLE_WAIT := 180.0         # seconds the title may take to become ready
@@ -80,7 +80,7 @@ func _fail(title: Node, why: String) -> void:
 	var status: Variant = title.get("status")
 	if status is Label: (status as Label).text = FAIL
 	var dialog := AcceptDialog.new()
-	dialog.title = "modChad's Mod Menu"
+	dialog.title = "modChads modManager"
 	dialog.dialog_text = FAIL
 	dialog.exclusive = false
 	dialog.confirmed.connect(dialog.queue_free)

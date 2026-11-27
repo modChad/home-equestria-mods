@@ -23,7 +23,6 @@ Mods:
   idle_life 1.5.0           twenty-one idles, princess scroll, quill, tea, shoe, sun and moon, and mood reactions
   item_spawn 1.0.0          is list / is add debug commands to put any item in your briefcase
   kissing 1.2.12            hold K to kiss the pony in front of you (Shift+K toggles rearing)
-  mod_reloader 1.0.0        "Reload from last save" in Settings -> Mods when a mod change needs a restart
   optimare 1.0.0            performance tweaks for the game's own models, for Quest 3 framerates
   pathfinding_fix 1.1.0     ponies pick better routes: roads, detours, doorways
   pegasus_ride_v2 2.2.1     ride a winged friend (princesses too); someone else's mod, adapted

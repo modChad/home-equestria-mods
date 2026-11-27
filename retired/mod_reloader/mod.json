@@ -1,0 +1,10 @@
+{
+	"id": "mod_reloader",
+	"name": "Mod Reloader",
+	"version": "1.0.0",
+	"author": "modChad",
+	"description": "Retired: now part of modChads modManager (Settings → Mods → Reload game). Adds \"Reload from last save\" to Settings → Mods when a mod change needs a restart. Saves, restarts the game and drops you straight back into your last save (or one you pick), with every mod loaded.",
+	"game_version": "0.3.1-maredev",
+	"entry": "res://mods/mod_reloader/main.gd",
+	"private": true
+}

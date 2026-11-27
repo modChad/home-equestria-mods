@@ -1,6 +1,6 @@
-# modChad's Mod Menu
+# modChads modManager
 
-- **Version:** 1.0.0
+- **Version:** 1.1.0
 - **Author:** modChad
 - **Made for:** Home: Equestria 0.3.1-maredev
 - **Works on:** desktop (VR attempted, not tested)
@@ -36,7 +36,8 @@ This tab appears only when something is wrong (Installed shows a "See what's wro
 
 - The listings at [mods.pones.top](https://mods.pones.top/), newest first, with **newer versions of mods you have** at the top. Search, and filter by Updates for my mods, Not installed, Security check passed or Highest rated.
 - Each listing shows its version, author, the site's security check result and whether you have it.
-- **Install** (press twice) downloads the mod's `.pck` into your mods folder; it loads the next time the game starts. One-click installs and updates only download a `.pck` from **GitHub** whose security check found nothing; anything else (another host such as pone.rs, a `.zip`, findings) shows why and links the listing's page instead.
+- **Install** (press twice) downloads the mod's `.pck` into your mods folder; it loads the next time the game starts. One-click installs and updates only download a `.pck` from **GitHub** whose security check found nothing; anything else (another host, a `.zip`, findings) shows why and links the listing's page instead.
+- **Downloads from u.pone.rs** (off by default): press **Allow** twice to also allow one-click installs from u.pone.rs and of listings whose security check had findings. **Stop** turns it off. Red-flagged listings and the content block are never allowed.
 - **Hard block, no switch:** listings with sexual content involving fillies, foals, colts or any other young character are never shown and can't be installed from this menu, whatever any setting says. It's checked when the list arrives, again before anything is drawn and again before any download. The site has no age or adult tag, so the menu reads each listing's own text and errs on the side of hiding.
 - **Adult listings (18+):** other adult or sexual listings are hidden by default; the switch at the bottom of the tab shows them. It never shows anything the hard block caught.
 - Listings the site's security check red-flags are hidden too.
@@ -44,9 +45,14 @@ This tab appears only when something is wrong (Installed shows a "See what's wro
 
 ## Install
 
-Put `modchads-mod-menu-v1.0.0.pck` in the game's `mods` folder, switch it on in **Settings → Mods** and restart the game.
+Put `modchads-modmanager-v1.1.0.pck` in the game's `mods` folder, switch it on in **Settings → Mods** and restart the game.
 
 ## Things to know
 
 - It changes only the Mods tab of the settings page (it extends `world/ui/settings_page.gd`), so a game update to that page may need a new version.
 - Mods can run code on your computer. Listings are posted by players and are not checked by the game's developer.
+
+## Changes
+
+- **1.1.0** (2026-11-27): renamed to modChads modManager (settings reset); optional u.pone.rs downloads switch; Open page links fixed (`/mod/37`, not `/mod/37.0`); GitHub `/blob/` download links are fetched as `/raw/`, and release-page links (`/releases/tag/<tag>`) as that release's `.pck`.
+- **1.0.0** (2026-11-26): first release.

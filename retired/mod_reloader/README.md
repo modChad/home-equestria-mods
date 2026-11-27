@@ -1,6 +1,6 @@
 # Mod Reloader
 
-> **Retired (2026-11-26):** merged into **modChad's Mod Menu**: its Reload game button restarts to the main menu or straight into your last save or a chosen one. Switch Mod Reloader off and delete `mod-reloader-v1.0.0.pck`.
+> **Retired (2026-11-26):** merged into **modChads modManager**: its Reload game button restarts to the main menu or straight into your last save or a chosen one. Switch Mod Reloader off and delete `mod-reloader-v1.0.0.pck`.
 
 
 - **Version:** 1.0.0

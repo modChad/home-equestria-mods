@@ -7,9 +7,9 @@ extends RefCounted
 
 const STYLE := preload("res://world/ui/menu_style.gd")
 const LOADER := preload("res://world/modding/mod_loader.gd")
-const BROWSE := preload("res://mods/modchads_mod_menu/menu/browse.gd")
-const PROBLEMS := preload("res://mods/modchads_mod_menu/menu/problems.gd")
-const RELOAD := preload("res://mods/modchads_mod_menu/menu/reload.gd")
+const BROWSE := preload("res://mods/modchads_modmanager/menu/browse.gd")
+const PROBLEMS := preload("res://mods/modchads_modmanager/menu/problems.gd")
+const RELOAD := preload("res://mods/modchads_modmanager/menu/reload.gd")
 const FILTERS := [["all", "All"], ["on", "On"], ["off", "Off"], ["restart", "Needs restart"], ["settings", "Has settings"],
 	["included", "Included"], ["yours", "Added by you"]]
 const SORTS := ["A–Z", "On first", "Author"]

@@ -12,7 +12,7 @@ extends RefCounted
 
 const STYLE := preload("res://world/ui/menu_style.gd")
 const LOADER := preload("res://world/modding/mod_loader.gd")
-const BROWSE := preload("res://mods/modchads_mod_menu/menu/browse.gd")
+const BROWSE := preload("res://mods/modchads_modmanager/menu/browse.gd")
 
 
 ## Every problem now: [{title, what, todo, kind, file, name, on, switchable}].
@@ -49,7 +49,7 @@ static func collect() -> Array:
 				"todo": "If something in the game looks out of date, try switching this mod off, and look for an update."}))
 		if (row.ids as Array).has("mod_reloader") and on:
 			out.append(_merge(base, {"kind": "retired", "title": "%s: retired" % name,
-				"what": "Mod Reloader's job is now part of modChad's Mod Menu (the Reload game button and the list under it). With both on, Mod Reloader only adds a second, older reload button elsewhere.",
+				"what": "Mod Reloader's job is now part of modChads modManager (the Reload game button and the list under it). With both on, Mod Reloader only adds a second, older reload button elsewhere.",
 				"todo": "Switch Mod Reloader off and delete %s from the mods folder." % file.get_file()}))
 		var warning := str(row.get("warning", ""))
 		if not warning.is_empty() and on:
@@ -130,7 +130,7 @@ static func build(page, list: VBoxContainer) -> void:
 		var todo := STYLE.label("What to do: " + str(p.todo), "Muted", fs - 4); todo.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		todo.size_flags_horizontal = Control.SIZE_EXPAND_FILL; stack.add_child(todo)
 		var actions := HFlowContainer.new(); actions.add_theme_constant_override("h_separation", 8); stack.add_child(actions)
-		var installed: Script = load("res://mods/modchads_mod_menu/menu/installed.gd")
+		var installed: Script = load("res://mods/modchads_modmanager/menu/installed.gd")
 		if not str(p.file).is_empty():
 			var show: Button = page._button(actions, "Show in Installed", func() -> void:
 				page.mm_view = "installed"; page.mm_query = str(p.name); page.mm_filter = "all"
@@ -138,7 +138,7 @@ static func build(page, list: VBoxContainer) -> void:
 			show.add_theme_font_size_override("font_size", fs - 4)
 		var listing: Dictionary = BROWSE.newer_listing(str(p.name), str(p.get("version", ""))) if not str(p.file).is_empty() else {}
 		if not listing.is_empty():
-			var lid := str(listing.get("id", ""))
+			var lid := BROWSE.listing_id(listing)
 			var progress := str(BROWSE.installing.get(lid, ""))
 			var why := BROWSE.install_check(listing)
 			var from := "%s %s by %s" % [str(listing.get("name", "")), str(listing.get("version", "")), str(listing.get("author", "Anonymous"))]

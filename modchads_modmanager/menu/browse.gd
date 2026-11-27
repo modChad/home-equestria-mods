@@ -9,21 +9,25 @@ extends RefCounted
 ## the tab opens (at most every CACHE_SECONDS) or on Refresh, never polled. Install downloads a
 ## .pck over HTTPS into the mods folder after a second press, checks it is a Godot pack, and the
 ## game loads it at the next start. One-click installs and updates need a download from a trusted
-## host (GitHub) and a security check without findings (install_check): anything else, a .zip or
+## host (GitHub) and a security check without findings (install_check). The "u.pone.rs" switch
+## (off by default, two presses to turn on) also allows u.pone.rs and listings with findings/mixed
+## checks; red-flagged listings and the hard block stay out. Anything else, a .zip or
 ## no download opens the listing's page instead. The index and downloads are shared with the
 ## Problems tab (ensure_index, download).
 
 const STYLE := preload("res://world/ui/menu_style.gd")
 const LOADER := preload("res://world/modding/mod_loader.gd")
-const FILTER := preload("res://mods/modchads_mod_menu/menu/content_filter.gd")
+const FILTER := preload("res://mods/modchads_modmanager/menu/content_filter.gd")
 const INDEX := "https://mods.pones.top"
-const AGENT := "modChads-Mod-Menu/1.0.0 (Home: Equestria)"
+const AGENT := "modChads-modManager/1.1.0 (Home: Equestria)"
 const CACHE_SECONDS := 600.0
 const PAGE_SIZE := 30
 const MOST_BYTES := 400 * 1024 * 1024
 const ARM_SECONDS := 5.0
 ## Hosts a one-click install or update may download from (and their subdomains).
 const TRUSTED_HOSTS := ["github.com", "githubusercontent.com"]
+## Allowed only while the player's "u.pone.rs" switch is on (allow_pone).
+const PONE_HOSTS := ["u.pone.rs"]
 ## Security check states that block a one-click install or update.
 const BAD_REVIEWS := ["red_flag", "findings", "mixed"]
 const MODES := [["newest", "Newest"], ["mine", "Updates for my mods"], ["new", "Not installed"], ["checked", "Security check passed"], ["rated", "Highest rated"]]
@@ -40,8 +44,13 @@ static var hidden_flag := 0
 static var hidden_nsfw := 0
 ## The player's "Adult listings" choice. It never reaches the hard block.
 static var show_nsfw := false
+## The player's "Downloads from u.pone.rs" choice (off by default). Never reaches red flags or the hard block.
+static var allow_pone := false
+## When "Allow" was first pressed; a second press within ARM_SECONDS turns it on.
+static var _pone_armed_at := -100.0
 static var _settings_read := false
-const SETTINGS_ID := "modchads_mod_menu"
+const SETTINGS_ID := "modchads_modmanager"
+
 static var last_error := ""
 ## listing id -> "Downloading…", "Installed: restart to load", "Failed: …"
 static var installing: Dictionary = {}
@@ -58,6 +67,15 @@ var query := ""
 var mode := "newest"
 var shown := PAGE_SIZE
 var loading := false
+
+
+
+## mods.pones.top ids arrive as JSON numbers, which Godot parses as floats (37 -> "37.0").
+static func listing_id(item: Dictionary) -> String:
+	var v = item.get("id", "")
+	if typeof(v) == TYPE_FLOAT and v == floor(v):
+		return str(int(v))
+	return str(v)
 
 
 func _init(settings_page, tab_list: VBoxContainer) -> void:
@@ -90,13 +108,16 @@ static func _read_settings() -> void:
 	if _settings_read: return
 	_settings_read = true
 	var cfg := ConfigFile.new()
-	if cfg.load(_settings_path()) == OK: show_nsfw = cfg.get_value("browse", "show_nsfw", false) == true
+	if cfg.load(_settings_path()) == OK:
+		show_nsfw = cfg.get_value("browse", "show_nsfw", false) == true
+		allow_pone = cfg.get_value("browse", "allow_pone_rs", false) == true
 
 
 static func _save_settings() -> void:
 	var cfg := ConfigFile.new()
 	cfg.load(_settings_path())
 	cfg.set_value("browse", "show_nsfw", show_nsfw)
+	cfg.set_value("browse", "allow_pone_rs", allow_pone)
 	DirAccess.make_dir_recursive_absolute(_settings_path().get_base_dir())
 	cfg.save(_settings_path())
 
@@ -303,11 +324,32 @@ static func install_check(item: Dictionary) -> String:
 	var trusted := false
 	for h: String in TRUSTED_HOSTS:
 		if host == h or host.ends_with("." + h): trusted = true
-	if not trusted: return "Download is on %s, not GitHub: get it from its page." % host
+	var pone := host in PONE_HOSTS
+	if pone and allow_pone: trusted = true
+	if not trusted:
+		if pone: return "Download is on %s, not GitHub: allow u.pone.rs below or get it from its page." % host
+		return "Download is on %s, not GitHub: get it from its page." % host
 	var review: Variant = item.get("security_review", {})
 	var state := str((review as Dictionary).get("state", "not_reviewed")) if review is Dictionary else "not_reviewed"
-	if state in BAD_REVIEWS: return "The site's security check found issues: read its page first."
+	if state == "red_flag": return "The site's security check red-flagged it: read its page first."
+	if state in BAD_REVIEWS and not allow_pone: return "The site's security check found issues: read its page first."
 	return ""
+
+
+## GitHub links that open a web page instead of the file:
+## github.com/<owner>/<repo>/blob/<ref>/<path>  (file viewer)  -> /raw/<ref>/<path>
+## github.com/<owner>/<repo>/releases/tag/<tag> (release page) -> /releases/download/<tag>/<filename>
+## A wrong guess (asset named differently) fails safely: 404, or the GDPC check.
+static func _direct_url(url: String, filename: String = "") -> String:
+	var parts := url.split("?")[0].split("#")[0].split("/")
+	# https: / "" / github.com / owner / repo / ...
+	if parts.size() < 6 or not parts[2].to_lower() in ["github.com", "www.github.com"]: return url
+	if parts.size() > 6 and parts[5] == "blob":
+		parts[5] = "raw"
+		return "/".join(parts)
+	if parts.size() == 8 and parts[5] == "releases" and parts[6] == "tag" and not parts[7].is_empty() and not filename.is_empty():
+		return "/".join(parts.slice(0, 5)) + "/releases/download/" + parts[7] + "/" + filename.uri_encode()
+	return url
 
 
 static func _pck(item: Dictionary) -> Dictionary:
@@ -316,14 +358,14 @@ static func _pck(item: Dictionary) -> Dictionary:
 		for d: Variant in downloads:
 			if not d is Dictionary: continue
 			var name := str((d as Dictionary).get("filename", "")).get_file()
-			var url := str((d as Dictionary).get("url", ""))
+			var url := _direct_url(str((d as Dictionary).get("url", "")), name)
 			if name.to_lower().ends_with(".pck") and url.begins_with("https://"): return {"filename": name, "url": url}
 	return {}
 
 
 func _listing(item: Dictionary, status: Array) -> void:
 	var fs: int = page.font_size
-	var id := str(item.get("id", ""))
+	var id := listing_id(item)
 	var card := PanelContainer.new(); card.add_theme_stylebox_override("panel", page._row_idle); body.add_child(card)
 	var line := HBoxContainer.new(); line.add_theme_constant_override("separation", 10); card.add_child(line)
 	var texts := VBoxContainer.new(); texts.add_theme_constant_override("separation", 3)
@@ -377,7 +419,7 @@ func _listing(item: Dictionary, status: Array) -> void:
 ## First press arms it (5 s), the second downloads. `changed` is called whenever its state moves.
 static func press_install(host: Node, item: Dictionary, changed: Callable) -> void:
 	if not install_check(item).is_empty(): return
-	var id := str(item.get("id", ""))
+	var id := listing_id(item)
 	var pck := _pck(item)
 	if _now() - float(armed.get(id, -100.0)) >= ARM_SECONDS:
 		armed[id] = _now()
@@ -404,7 +446,7 @@ static func _mods_dir() -> String:
 static func download(host: Node, item: Dictionary, changed: Callable) -> void:
 	if not install_check(item).is_empty() or FILTER.hard_blocked(item): return
 	var pck := _pck(item)
-	var id := str(item.get("id", ""))
+	var id := listing_id(item)
 	var name := str(pck.filename).get_file().validate_filename()
 	if not name.to_lower().ends_with(".pck"): return
 	var folder := _mods_dir()
@@ -422,7 +464,7 @@ static func download(host: Node, item: Dictionary, changed: Callable) -> void:
 
 
 static func _downloaded(item: Dictionary, part: String, final: String, result: int, code: int) -> void:
-	var id := str(item.get("id", ""))
+	var id := listing_id(item)
 	var why := ""
 	if result != HTTPRequest.RESULT_SUCCESS: why = _result_text(result)
 	elif code != 200: why = "the server answered %d" % code
@@ -463,9 +505,37 @@ func _footer() -> void:
 	var flip: Button = page._button(line, "Hide them" if show_nsfw else "Show them", func() -> void:
 		show_nsfw = not show_nsfw; _save_settings(); shown = PAGE_SIZE; fill())
 	flip.add_theme_font_size_override("font_size", fs - 4); flip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_pone_line()
 	if hidden_flag > 0:
 		_card("Hidden: %d %s that the site's security check red-flagged. Red-flagged listings are never offered here." % [hidden_flag, "listing" if hidden_flag == 1 else "listings"], STYLE.CORAL)
 	_card("Never shown, whatever the settings: sexual content involving fillies, foals, colts or any other young character. This block has no switch and can't be installed around from this menu." + (" Hidden: %d." % hidden_filter if hidden_filter > 0 else ""), STYLE.FAINT)
+
+
+## "Downloads from u.pone.rs" switch: Allow needs two presses (ARM_SECONDS), Stop one.
+func _pone_line() -> void:
+	var fs: int = page.font_size
+	var panel := PanelContainer.new()
+	var tint: Color = STYLE.CORAL if allow_pone else STYLE.LILAC
+	panel.add_theme_stylebox_override("panel", STYLE.rounded(STYLE.box(Color(tint, 0.08), Color(tint, 0.3), 1, 14, 14, 10)))
+	body.add_child(panel)
+	var line := HBoxContainer.new(); line.add_theme_constant_override("separation", 10); panel.add_child(line)
+	var text := ("Downloads from u.pone.rs: allowed. Listings with security findings can be installed too." if allow_pone
+		else "Downloads from u.pone.rs: off.") + " Packs from there aren't checked the same way as GitHub ones."
+	var label := STYLE.label(text, "", fs - 4); label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL; label.size_flags_vertical = Control.SIZE_SHRINK_CENTER; line.add_child(label)
+	var armed := not allow_pone and _now() - _pone_armed_at < ARM_SECONDS
+	var flip: Button = page._button(line, "Stop" if allow_pone else ("Press again" if armed else "Allow"), func() -> void:
+		if allow_pone:
+			allow_pone = false; _save_settings()
+			Settings.message = "Downloads from u.pone.rs are off again."
+		elif _now() - _pone_armed_at < ARM_SECONDS:
+			allow_pone = true; _pone_armed_at = -100.0; _save_settings()
+			Settings.message = "Downloads from u.pone.rs allowed. Only install packs you trust."
+		else:
+			_pone_armed_at = _now()
+			Settings.message = "Press Allow again to allow downloads from u.pone.rs."
+		fill())
+	flip.add_theme_font_size_override("font_size", fs - 4); flip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
 
 func _card(text: String, color: Color) -> void:

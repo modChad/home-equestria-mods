@@ -13,7 +13,7 @@ const SAVES := preload("res://world/game_saves.gd")
 const CATALOGUE := preload("res://world/saves/save_catalogue.gd")
 const ARM_SECONDS := 5.0
 const MAX_SAVES := 20
-const ENTRY := preload("res://mods/modchads_mod_menu/main.gd")
+const ENTRY := preload("res://mods/modchads_modmanager/main.gd")
 
 ## Which entry of the list is chosen (kept while the page is open).
 static var choice := 0
@@ -74,7 +74,7 @@ static func _relaunch(page, into_save: bool, path: String, world_id: String) -> 
 	if is_instance_valid(game):
 		var saves := game.get_node_or_null("GameSaves")
 		if saves != null and saves.has_method("save_before_quit") and not saves.call("save_before_quit"):
-			push_warning("[modchads_mod_menu] the autosave before reloading did not write")
+			push_warning("[modchads_modmanager] the autosave before reloading did not write")
 	var note_file := ProjectSettings.globalize_path(ENTRY.note_path())
 	if into_save:
 		var note := ConfigFile.new()
@@ -97,7 +97,7 @@ static func _relaunch(page, into_save: bool, path: String, world_id: String) -> 
 		args.append("--"); args.append_array(user)
 	var image := OS.get_environment("APPIMAGE")
 	var exe := image if not image.is_empty() else OS.get_executable_path()
-	print("[modchads_mod_menu] reloading %s: %s %s" % ["into a save" if into_save else "to the main menu", exe, " ".join(args)])
+	print("[modchads_modmanager] reloading %s: %s %s" % ["into a save" if into_save else "to the main menu", exe, " ".join(args)])
 	if OS.create_process(exe, args) < 0:
 		if into_save: DirAccess.remove_absolute(note_file)
 		Settings.message = "Could not start the game again. Close it and start it yourself."; page.refresh(); return

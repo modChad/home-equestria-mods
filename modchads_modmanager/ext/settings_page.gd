@@ -1,5 +1,5 @@
 extends "res://world/ui/settings_page.gd"
-## modChad's Mod Menu 1.0.0: replaces only the Settings → Mods tab (_build_mods). The game's own
+## modChads modManager 1.1.0: replaces only the Settings → Mods tab (_build_mods). The game's own
 ## helpers are reused (_button, _note, _mod_notes, _one_scenario_switch, _mod_updates,
 ## _open_mods_folder) and every colour comes from world/ui/menu_style.gd, so it looks like the
 ## rest of the page. The tab bar carries its own Reload control (menu/reload.gd, with main.gd for
@@ -7,7 +7,7 @@ extends "res://world/ui/settings_page.gd"
 ## "Open the mods folder" so an old copy of Mod Reloader, which anchors its row on the exact text
 ## "Open mods folder", adds nothing here.
 
-const MM_INSTALLED := preload("res://mods/modchads_mod_menu/menu/installed.gd")
+const MM_INSTALLED := preload("res://mods/modchads_modmanager/menu/installed.gd")
 
 ## "installed" or "browse".
 var mm_view := "installed"
