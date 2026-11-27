@@ -336,30 +336,45 @@ static func install_check(item: Dictionary) -> String:
 	return ""
 
 
-## GitHub links that open a web page instead of the file:
-## github.com/<owner>/<repo>/blob/<ref>/<path>  (file viewer)  -> /raw/<ref>/<path>
-## github.com/<owner>/<repo>/releases/tag/<tag> (release page) -> /releases/download/<tag>/<filename>
-## A wrong guess (asset named differently) fails safely: 404, or the GDPC check.
-static func _direct_url(url: String, filename: String = "") -> String:
+## github.com/<owner>/<repo>/blob/<ref>/<path> is GitHub's file viewer (an HTML page);
+## /raw/ at the same place is the file itself.
+static func _direct_url(url: String) -> String:
 	var parts := url.split("?")[0].split("#")[0].split("/")
-	# https: / "" / github.com / owner / repo / ...
-	if parts.size() < 6 or not parts[2].to_lower() in ["github.com", "www.github.com"]: return url
-	if parts.size() > 6 and parts[5] == "blob":
+	# https: / "" / github.com / owner / repo / blob / ref / path...
+	if parts.size() > 6 and parts[2].to_lower() in ["github.com", "www.github.com"] and parts[5] == "blob":
 		parts[5] = "raw"
 		return "/".join(parts)
-	if parts.size() == 8 and parts[5] == "releases" and parts[6] == "tag" and not parts[7].is_empty() and not filename.is_empty():
-		return "/".join(parts.slice(0, 5)) + "/releases/download/" + parts[7] + "/" + filename.uri_encode()
 	return url
 
 
+## [owner, repo, tag] for a github.com/<owner>/<repo>/releases/tag/<tag> page, else [].
+## Its .pck is looked up through GitHub's API when Install is pressed (_resolve_release).
+static func _release_of(url: String) -> Array:
+	if not url.begins_with("https://"): return []
+	var parts := url.split("?")[0].split("#")[0].split("/")
+	if parts.size() == 8 and parts[2].to_lower() in ["github.com", "www.github.com"] and parts[5] == "releases" and parts[6] == "tag" \
+			and not parts[3].is_empty() and not parts[4].is_empty() and not parts[7].is_empty():
+		return [parts[3], parts[4], parts[7].uri_decode()]
+	return []
+
+
+## The download to install: a direct .pck over HTTPS first, else a GitHub release page (its .pck
+## is found through the API when Install is pressed: "release" = [owner, repo, tag]). {} if none.
 static func _pck(item: Dictionary) -> Dictionary:
 	var downloads: Variant = item.get("downloads", [])
-	if downloads is Array:
-		for d: Variant in downloads:
-			if not d is Dictionary: continue
-			var name := str((d as Dictionary).get("filename", "")).get_file()
-			var url := _direct_url(str((d as Dictionary).get("url", "")), name)
-			if name.to_lower().ends_with(".pck") and url.begins_with("https://"): return {"filename": name, "url": url}
+	if not downloads is Array: return {}
+	for d: Variant in downloads:
+		if not d is Dictionary: continue
+		var name := str((d as Dictionary).get("filename", "")).get_file()
+		var raw := str((d as Dictionary).get("url", ""))
+		if not _release_of(raw).is_empty(): continue
+		var url := _direct_url(raw)
+		if name.to_lower().ends_with(".pck") and url.begins_with("https://"): return {"filename": name, "url": url}
+	for d: Variant in downloads:
+		if not d is Dictionary: continue
+		var raw := str((d as Dictionary).get("url", ""))
+		var rel := _release_of(raw)
+		if not rel.is_empty(): return {"filename": str((d as Dictionary).get("filename", "")).get_file(), "url": raw, "release": rel}
 	return {}
 
 
@@ -447,8 +462,65 @@ static func download(host: Node, item: Dictionary, changed: Callable) -> void:
 	if not install_check(item).is_empty() or FILTER.hard_blocked(item): return
 	var pck := _pck(item)
 	var id := listing_id(item)
-	var name := str(pck.filename).get_file().validate_filename()
-	if not name.to_lower().ends_with(".pck"): return
+	if pck.has("release"):
+		installing[id] = "Finding the download…"; changed.call()
+		_resolve_release(host, item, pck, changed)
+		return
+	_fetch(host, item, str(pck.filename), str(pck.url), changed)
+
+
+## Asks GitHub which files the release has (one GET, only when Install is pressed) and downloads
+## its .pck: the only one, else the one named like the listing's filename.
+static func _resolve_release(host: Node, item: Dictionary, pck: Dictionary, changed: Callable) -> void:
+	var id := listing_id(item)
+	var rel: Array = pck.release
+	var api := "https://api.github.com/repos/%s/%s/releases/tags/%s" % [str(rel[0]).uri_encode(), str(rel[1]).uri_encode(), str(rel[2]).uri_encode()]
+	var http := HTTPRequest.new(); http.timeout = 30.0; http.body_size_limit = 4 * 1024 * 1024
+	host.add_child(http)
+	http.request_completed.connect(func(result: int, code: int, _h: PackedStringArray, body: PackedByteArray) -> void:
+		http.queue_free()
+		var why := ""
+		var pick := {}
+		if result != HTTPRequest.RESULT_SUCCESS: why = _result_text(result)
+		elif code == 403 or code == 429: why = "GitHub is limiting requests: try again later or use Open page"
+		elif code != 200: why = "GitHub answered %d for that release" % code
+		else:
+			var data: Variant = JSON.parse_string(body.get_string_from_utf8())
+			pick = _pick_asset(data, str(pck.filename))
+			if pick.is_empty(): why = "no single .pck in that release: use Open page"
+		if not why.is_empty():
+			installing[id] = "Failed: %s." % why; changed.call(); return
+		_fetch(host, item, str(pick.name), str(pick.url), changed))
+	var err := http.request(api, ["User-Agent: " + AGENT, "Accept: application/vnd.github+json"])
+	if err != OK:
+		http.queue_free(); installing[id] = "Failed: could not reach GitHub."; changed.call()
+
+
+## {name, url} of the release's .pck (a GitHub-hosted HTTPS download), or {} if none or unclear.
+static func _pick_asset(data: Variant, hint: String) -> Dictionary:
+	if not data is Dictionary: return {}
+	var assets: Variant = (data as Dictionary).get("assets", [])
+	if not assets is Array: return {}
+	var found: Array = []
+	for a: Variant in assets:
+		if not a is Dictionary: continue
+		var name := str((a as Dictionary).get("name", "")).get_file()
+		var url := str((a as Dictionary).get("browser_download_url", ""))
+		var host := url.trim_prefix("https://").get_slice("/", 0).to_lower()
+		if name.to_lower().ends_with(".pck") and url.begins_with("https://") and host == "github.com":
+			found.append({"name": name, "url": url})
+	if found.size() == 1: return found[0]
+	var want := hint.to_lower().get_basename() if hint.to_lower().ends_with(".pck") else hint.to_lower()
+	for f: Dictionary in found:
+		if str(f.name).to_lower().get_basename() == want: return f
+	return {}
+
+
+static func _fetch(host: Node, item: Dictionary, filename: String, url: String, changed: Callable) -> void:
+	var id := listing_id(item)
+	var name := filename.get_file().validate_filename()
+	if not name.to_lower().ends_with(".pck"):
+		installing[id] = "Failed: no .pck download."; changed.call(); return
 	var folder := _mods_dir()
 	var part := folder.path_join(name + ".part")
 	var final := folder.path_join(name)
@@ -458,7 +530,7 @@ static func download(host: Node, item: Dictionary, changed: Callable) -> void:
 	installing[id] = "Downloading…"; changed.call()
 	http.request_completed.connect(func(result: int, code: int, _h: PackedStringArray, _b: PackedByteArray) -> void:
 		http.queue_free(); _downloaded(item, part, final, result, code); changed.call())
-	var err := http.request(str(pck.url), ["User-Agent: " + AGENT])
+	var err := http.request(url, ["User-Agent: " + AGENT])
 	if err != OK:
 		http.queue_free(); installing[id] = "Failed: could not start the download."; changed.call()
 

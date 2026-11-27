@@ -54,5 +54,5 @@ Put `modchads-modmanager-v1.1.0.pck` in the game's `mods` folder, switch it on i
 
 ## Changes
 
-- **1.1.0** (2026-11-27): renamed to modChads modManager (settings reset); optional u.pone.rs downloads switch; Open page links fixed (`/mod/37`, not `/mod/37.0`); GitHub `/blob/` download links are fetched as `/raw/`, and release-page links (`/releases/tag/<tag>`) as that release's `.pck`.
+- **1.1.0** (2026-11-27): renamed to modChads modManager (settings reset); optional u.pone.rs downloads switch; Open page links fixed (`/mod/37`, not `/mod/37.0`); GitHub `/blob/` download links are fetched as `/raw/`, and release-page links (`/releases/tag/<tag>`) are looked up through GitHub's API to find that release's `.pck`.
 - **1.0.0** (2026-11-26): first release.
