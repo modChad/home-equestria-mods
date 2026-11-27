@@ -42,10 +42,21 @@ const NSFW_INSIDE := ["plap", "lewd", "porn", "hentai", "nsfw", "fuck"]
 
 
 ## True when the listing must never be shown or installed, whatever any setting says.
+## Listings blocked by hand (user, 2026-11-27): by mods.pones.top id and by name, so a re-upload
+## under a new id is still caught. Part of the hard block: no setting reaches it.
+const BLOCKED_IDS := ["12", "64", "84"]
+const BLOCKED_NAMES := ["filly dating mod", "filly dating", "smallest of dates", "fillypatch"]
+
+
 static func hard_blocked(item: Variant) -> bool:
 	if not item is Dictionary: return true
 	var listing: Dictionary = item
 	if str(listing.get("name", "")).strip_edges().is_empty(): return true
+	var v: Variant = listing.get("id", "")
+	var id := str(int(v)) if typeof(v) == TYPE_FLOAT and v == floor(v) else str(v)
+	if id in BLOCKED_IDS: return true
+	var name := " ".join(str(listing.get("name", "")).to_lower().split(" ", false))
+	if name in BLOCKED_NAMES: return true
 	return blocked_text(_text(listing))
 
 
