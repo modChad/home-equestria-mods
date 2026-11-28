@@ -1,0 +1,13 @@
+{
+ "lore": [
+  {
+   "id": "horn_touch_horns",
+   "scope": "authored",
+   "triggers": ["horn", "horns", "unicorn", "unicorns", "zap", "zapped", "magic", "touch", "touched", "grab", "grabbed", "stroke", "stroked", "sparkle", "sparkles"],
+   "viewers": [],
+   "priority": 30,
+   "provenance": "Horn Touch mod",
+   "text": "A unicorn's horn is delicate and very sensitive. Touching another pony's horn is deeply personal: only close friends and partners may, and even then it makes a unicorn shy and flustered. A stranger grabbing a horn is a serious breach of manners, and a unicorn will push them away with a jolt of magic. A horn stroked for long enough by someone she trusts can overflow with a harmless burst of sparkles in her magic colour, which leaves her blushing."
+  }
+ ]
+}

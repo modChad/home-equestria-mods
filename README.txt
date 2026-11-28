@@ -20,6 +20,7 @@ Mods:
   dance_mod_patch 1.0.0     a typed "y" no longer starts or stops a dance (patch for the bundled Dance Mod 2.1.1)
   hair_lite 1.0.1           every pony's mane and tail with far fewer triangles, for Quest 3 framerates
   horn_glow 1.1.1           a unicorn's magic glows around the horn itself, with a soft hum
+  horn_touch 1.0.0          stroke a unicorn's horn: a zap and a daze unless she's a close friend
   idle_life 1.5.0           twenty-one idles, princess scroll, quill, tea, shoe, sun and moon, and mood reactions
   item_spawn 1.0.0          is list / is add debug commands to put any item in your briefcase
   kissing 1.2.12            hold K to kiss the pony in front of you (Shift+K toggles rearing)

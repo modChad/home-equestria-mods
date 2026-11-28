@@ -1,0 +1,9 @@
+{
+	"id": "horn_touch",
+	"name": "Horn Touch",
+	"version": "1.0.0",
+	"author": "modChad",
+	"description": "Grab or stroke a unicorn's horn (hold the left mouse button on it and move the mouse; in VR, grip it and slide your hand). Horns are delicate: below Close Friend she blasts you away with her magic and leaves you dazed (15 s, 30 s for an alicorn), and doing it again soon after earns a buck. Close Friends and partners let you, flustered but willing, until her horn overloads in a burst of sparkles in her magic colour. Ponies nearby react and remember it. Touch a princess's horn uninvited a fifth time and Luna banishes you to the moon for a day, while Celestia and Twilight teleport you into the Everfree Forest; after five unwanted touches in all, other unicorns run from you until you apologise. Never affects fillies or colts, or a young player.",
+	"game_version": "0.3.1-maredev",
+	"entry": "res://mods/horn_touch/main.gd"
+}
